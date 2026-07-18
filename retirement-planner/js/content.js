@@ -91,3 +91,56 @@ function buildLifeAfterIntro(input, childrenAges) {
   }
   return "With your kids grown and independent by the time you retire, this next chapter is squarely your own. A few areas worth planning deliberately:";
 }
+
+/**
+ * Household net worth and retirement-account balances by age bracket,
+ * from the Federal Reserve's 2022 Survey of Consumer Finances (released
+ * Oct 2023 — the most recent wave available). Net worth is the median
+ * across ALL households in the bracket; retirement-account balance is
+ * the median among the roughly 55–65% of households that have one
+ * (most households without an account would otherwise pull that median
+ * toward zero and be misleading).
+ */
+const RETIREMENT_STATS_BY_AGE = [
+  { label: "Under 35", netWorth: 39000, retirementBalance: 18880 },
+  { label: "35–44", netWorth: 135000, retirementBalance: 45000 },
+  { label: "45–54", netWorth: 247000, retirementBalance: 115000 },
+  { label: "55–64", netWorth: 364000, retirementBalance: 185000 },
+  { label: "65–74", netWorth: 410000, retirementBalance: 200000 },
+  { label: "75+", netWorth: 335000, retirementBalance: 130000 },
+];
+
+const TAX_STRATEGIES = [
+  {
+    title: "401(k) / 403(b)",
+    body: "Pre-tax salary deferral lowers your taxable income now and grows tax-deferred until withdrawal. 2025 employee limit: $23,500 ($31,000 if 50+, higher still for ages 60–63 under SECURE 2.0). An employer match is free money — contribute at least enough to capture all of it.",
+  },
+  {
+    title: "Traditional vs. Roth IRA",
+    body: "Traditional IRA contributions may be deductible now and are taxed on withdrawal; Roth IRA contributions are after-tax but grow and withdraw tax-free. 2025 limit: $7,000 ($8,000 if 50+), with Roth eligibility phased out at higher incomes.",
+  },
+  {
+    title: "Backdoor Roth IRA",
+    body: "High earners above the Roth income limit can contribute to a Traditional IRA (nondeductible) and convert it to Roth soon after — mind the pro-rata rule if you hold other pre-tax IRA balances, which can make the conversion partly taxable.",
+  },
+  {
+    title: "HSA (Health Savings Account)",
+    body: "The only triple-tax-advantaged account: pre-tax contributions, tax-free growth, and tax-free withdrawals for qualified medical expenses. After 65, non-medical withdrawals are taxed like a Traditional IRA with no penalty. 2025 limit: $4,300 individual / $8,550 family.",
+  },
+  {
+    title: "Mega backdoor Roth",
+    body: "Some 401(k) plans allow after-tax contributions beyond the standard employee limit, which can then be converted to Roth — potentially tens of thousands more in tax-advantaged room per year, if your specific plan allows it.",
+  },
+  {
+    title: "Tax-loss harvesting",
+    body: "Selling taxable-account investments at a loss to offset capital gains (and up to $3,000 of ordinary income per year) can reduce your tax bill without changing your overall allocation — just mind the wash-sale rule when re-buying.",
+  },
+  {
+    title: "Qualified Charitable Distributions",
+    body: "At 70½+, you can direct up to roughly $105,000/yr (2024 figure, indexed annually) from an IRA straight to charity. It counts toward your Required Minimum Distribution but isn't included in your taxable income.",
+  },
+  {
+    title: "Asset location",
+    body: "Placing tax-inefficient investments (bonds, REITs) in tax-deferred or Roth accounts, and tax-efficient ones (broad index funds) in taxable accounts, can reduce the tax drag on your portfolio independent of your overall asset allocation.",
+  },
+];

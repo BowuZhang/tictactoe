@@ -5,6 +5,7 @@ const fireTypeBadge = document.getElementById("fire-type-badge");
 const fireTypeDescription = document.getElementById("fire-type-description");
 
 let selectedFireTypeKey = null; // null = follow the computed recommendation
+let hasCalculated = false;
 
 function populateStateDropdowns() {
   const options = Object.entries(STATE_DATA)
@@ -86,7 +87,7 @@ function renderFireTypeTabs(computedKey) {
   tabsEl.innerHTML = FIRE_TYPES.map(
     (t) => `
       <button type="button" class="fire-tab ${t.key === activeKey ? "active" : ""}" data-fire-key="${t.key}">
-        ${t.label}${t.key === computedKey ? '<span class="fire-tab-recommended">Recommended</span>' : ""}
+        ${t.label}${computedKey && t.key === computedKey ? '<span class="fire-tab-recommended">Recommended</span>' : ""}
       </button>
     `
   ).join("");
@@ -207,13 +208,10 @@ function render(input) {
   // --- Family ---
   document.getElementById("family-suggestion").textContent = buildFamilySuggestion(familyInput);
   const familyMilestonesEl = document.getElementById("family-milestones");
-  if (familyPlan.milestones.length === 0) {
-    familyMilestonesEl.innerHTML = "";
-  } else {
-    familyMilestonesEl.innerHTML = familyPlan.milestones
-      .map((m) => `<li>${m.label} — you'll be about age ${m.age}</li>`)
-      .join("");
-  }
+  familyMilestonesEl.innerHTML =
+    familyPlan.milestones.length === 0
+      ? ""
+      : familyPlan.milestones.map((m) => `<li>${m.label} — you'll be about age ${m.age}</li>`).join("");
 
   // --- Life after retirement ---
   document.getElementById("life-after-intro").textContent = buildLifeAfterIntro(input, familyInput.childrenAges);
@@ -222,31 +220,114 @@ function render(input) {
 function renderStaticContent() {
   document.getElementById("life-after-categories").innerHTML = LIFE_AFTER_CATEGORIES.map(
     (cat) => `
-      <div class="life-category">
+      <div class="info-card">
         <h4>${cat.title}</h4>
         <ul>${cat.items.map((item) => `<li>${item}</li>`).join("")}</ul>
       </div>
     `
   ).join("");
+
+  document.getElementById("tax-strategies-grid").innerHTML = TAX_STRATEGIES.map(
+    (s) => `<div class="info-card"><h4>${s.title}</h4><p>${s.body}</p></div>`
+  ).join("");
+
+  renderGroupedBarChart(
+    document.getElementById("stats-chart-container"),
+    RETIREMENT_STATS_BY_AGE,
+    { key: "netWorth", label: "Median net worth (all households)", color: "#1f7a5c" },
+    { key: "retirementBalance", label: "Median retirement balance (households with one)", color: "#8a5cb0" }
+  );
+  document.getElementById("stats-table-body").innerHTML = RETIREMENT_STATS_BY_AGE.map(
+    (row) => `<tr><td>${row.label}</td><td>${currency(row.netWorth)}</td><td>${currency(row.retirementBalance)}</td></tr>`
+  ).join("");
+
+  // Initial FIRE tab render with no computed recommendation yet.
+  renderFireTypeTabs(null);
+}
+
+// --- Deferred calculation: no results until the core inputs are complete ---
+
+function setGatedMessage(text) {
+  document.querySelectorAll(".gated-message").forEach((el) => (el.textContent = text));
+}
+
+function revealResults() {
+  document.querySelectorAll(".gated-empty").forEach((el) => (el.hidden = true));
+  document.querySelectorAll(".gated-content").forEach((el) => (el.hidden = false));
+}
+
+function attemptRender(forceSpinner) {
+  if (!form.checkValidity()) return; // stay in the empty state, or keep the last good render
+  const shouldSpin = forceSpinner || !hasCalculated;
+  if (shouldSpin) {
+    document.querySelectorAll(".gated-spinner").forEach((el) => (el.hidden = false));
+    setGatedMessage("Calculating your plan…");
+    setTimeout(() => {
+      render(readInputs());
+      hasCalculated = true;
+      revealResults();
+    }, 350);
+  } else {
+    render(readInputs());
+  }
 }
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
   selectedFireTypeKey = null;
-  render(readInputs());
+  attemptRender(true);
 });
 
-compareStateSelect.addEventListener("change", () => render(readInputs()));
-
-["split-traditional", "split-roth", "split-taxable", "taxable-gains-fraction", "withdrawal-strategy"].forEach((id) => {
-  document.getElementById(id).addEventListener("change", () => render(readInputs()));
+document.addEventListener("input", (e) => {
+  if (e.target.classList && e.target.classList.contains("plan-input")) {
+    attemptRender(false);
+  }
 });
 
-["children-ages", "include-college-costs", "college-cost-per-year"].forEach((id) => {
-  document.getElementById(id).addEventListener("change", () => render(readInputs()));
+// --- Slider live-value readouts ---
+
+document.querySelectorAll('input[type="range"]').forEach((slider) => {
+  const output = document.querySelector(`output[for="${slider.id}"]`);
+  if (!output) return;
+  const format = slider.dataset.format || "plain";
+  const updateOutput = () => {
+    const v = slider.value;
+    if (format === "percent") output.textContent = `${v}%`;
+    else if (format === "age") output.textContent = `Age ${v}`;
+    else output.textContent = v;
+  };
+  updateOutput();
+  slider.addEventListener("input", updateOutput);
+});
+
+// --- Location detection (opt-in) ---
+
+const detectBtn = document.getElementById("detect-state-btn");
+const detectStatus = document.getElementById("detect-state-status");
+
+detectBtn.addEventListener("click", () => {
+  detectBtn.disabled = true;
+  const originalLabel = detectBtn.textContent;
+  detectBtn.textContent = "Detecting…";
+  detectStatus.textContent = "";
+
+  detectMyState((error, stateCode) => {
+    detectBtn.disabled = false;
+    detectBtn.textContent = originalLabel;
+    if (error) {
+      detectStatus.textContent = error.message;
+      detectStatus.className = "detect-status detect-status-error";
+      return;
+    }
+    stateSelect.value = stateCode;
+    detectStatus.textContent = `Detected: ${STATE_DATA[stateCode].name}`;
+    detectStatus.className = "detect-status detect-status-ok";
+    attemptRender(false);
+  });
 });
 
 document.getElementById("see-fire-plan-link").addEventListener("click", () => {
+  showView("calculator");
   openPanel("panel-fire-plan");
   document.getElementById("panel-fire-plan").scrollIntoView({ behavior: "smooth", block: "start" });
 });
@@ -272,9 +353,35 @@ document.querySelectorAll(".panel-toggle").forEach((btn) => {
 let resizeTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => render(readInputs()), 150);
+  resizeTimer = setTimeout(() => {
+    if (hasCalculated) render(readInputs());
+    renderStaticContent();
+  }, 150);
 });
+
+// --- Page navigation ---
+
+const VIEWS = ["home", "calculator", "statistics", "tax-strategies"];
+
+function showView(name) {
+  if (!VIEWS.includes(name)) name = "home";
+  VIEWS.forEach((v) => {
+    document.getElementById("view-" + v).hidden = v !== name;
+  });
+  document.querySelectorAll(".topnav-link").forEach((btn) => {
+    btn.classList.toggle("active", btn.getAttribute("data-view") === name);
+  });
+  window.scrollTo(0, 0);
+  if (location.hash.slice(1) !== name) location.hash = name;
+}
+
+document.querySelectorAll("[data-view]").forEach((el) => {
+  el.addEventListener("click", () => showView(el.getAttribute("data-view")));
+});
+
+window.addEventListener("hashchange", () => showView(location.hash.slice(1) || "home"));
 
 populateStateDropdowns();
 renderStaticContent();
-render(readInputs());
+attemptRender(false);
+showView(location.hash.slice(1) || "home");

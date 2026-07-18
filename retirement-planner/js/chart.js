@@ -220,3 +220,57 @@ function renderStrategyComparisonChart(containerEl, strategyResults, retirementA
     </div>
   `;
 }
+
+/** Grouped bar chart: two series (e.g. net worth vs. retirement balance) per labeled category. */
+function renderGroupedBarChart(containerEl, categories, seriesA, seriesB) {
+  const width = Math.max(280, Math.min(720, containerEl.clientWidth || 720));
+  const isNarrow = width < 420;
+  const height = isNarrow ? 300 : 340;
+  const margin = { top: 20, right: isNarrow ? 8 : 20, bottom: isNarrow ? 54 : 46, left: isNarrow ? 46 : 64 };
+  const tickFontSize = isNarrow ? 10 : 12;
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+
+  const maxVal = Math.max(...categories.map((c) => Math.max(c[seriesA.key], c[seriesB.key]))) * 1.1;
+  const yScale = (v) => margin.top + innerH - (v / maxVal) * innerH;
+
+  const groupWidth = innerW / categories.length;
+  const barGap = isNarrow ? 3 : 6;
+  const barWidth = (groupWidth - barGap * 3) / 2;
+
+  const tickCount = isNarrow ? 4 : 5;
+  let yTicks = "";
+  for (let i = 0; i <= tickCount; i++) {
+    const val = (maxVal / tickCount) * i;
+    const y = yScale(val).toFixed(1);
+    yTicks += `
+      <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" class="chart-grid" />
+      <text x="${margin.left - 8}" y="${Number(y) + 4}" class="chart-axis-label" font-size="${tickFontSize}" text-anchor="end">${formatCurrencyShort(val)}</text>
+    `;
+  }
+
+  let bars = "";
+  categories.forEach((cat, i) => {
+    const groupX = margin.left + i * groupWidth;
+    const xA = groupX + barGap;
+    const xB = xA + barWidth + barGap;
+    const yA = yScale(cat[seriesA.key]);
+    const yB = yScale(cat[seriesB.key]);
+    bars += `
+      <rect x="${xA.toFixed(1)}" y="${yA.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${(margin.top + innerH - yA).toFixed(1)}" fill="${seriesA.color}" rx="2" />
+      <rect x="${xB.toFixed(1)}" y="${yB.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${(margin.top + innerH - yB).toFixed(1)}" fill="${seriesB.color}" rx="2" />
+      <text x="${(groupX + groupWidth / 2).toFixed(1)}" y="${height - margin.bottom + (isNarrow ? 16 : 18)}" font-size="${tickFontSize}" text-anchor="middle" class="chart-axis-label">${cat.label}</text>
+    `;
+  });
+
+  containerEl.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" class="projection-svg" role="img" aria-label="${seriesA.label} versus ${seriesB.label} by age bracket">
+      ${yTicks}
+      ${bars}
+    </svg>
+    <div class="chart-legend">
+      <span><i class="legend-swatch" style="background:${seriesA.color}"></i>${seriesA.label}</span>
+      <span><i class="legend-swatch" style="background:${seriesB.color}"></i>${seriesB.label}</span>
+    </div>
+  `;
+}

@@ -7,302 +7,453 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="page-header">
-    <h1>Ember</h1>
-    <p class="tagline">Retirement &amp; FIRE Planner</p>
-    <p class="subtitle">Project your retirement timeline and see how your state's taxes and cost of living affect it — free, and everything runs in your browser.</p>
-  </header>
+  <nav class="topnav">
+    <button class="topnav-brand" data-view="home">🔥 Ember</button>
+    <div class="topnav-links">
+      <button class="topnav-link" data-view="calculator">Calculator</button>
+      <button class="topnav-link" data-view="statistics">Statistics</button>
+      <button class="topnav-link" data-view="tax-strategies">Tax Strategies</button>
+      <button class="topnav-link" disabled title="Coming soon">Retirement Life</button>
+    </div>
+  </nav>
 
-  <main>
-    <section class="panel" id="panel-numbers">
-      <button class="panel-toggle" aria-expanded="true" aria-controls="panel-numbers-body">
-        <h2>Your numbers</h2>
-        <span class="chevron" aria-hidden="true"></span>
-      </button>
-      <div class="panel-body" id="panel-numbers-body">
-        <form id="planner-form">
+  <div id="view-home" class="view">
+    <header class="page-header">
+      <h1>Ember</h1>
+      <p class="tagline">Retirement &amp; FIRE Planner</p>
+      <p class="subtitle">A free, one-stop shop for planning retirement: project your numbers, see how you compare to national benchmarks, and explore strategies to keep more of what you save — all running locally in your browser.</p>
+    </header>
+    <main>
+      <div class="home-menu">
+        <button class="menu-card" data-view="calculator">
+          <span class="menu-card-icon">🧮</span>
+          <h2>Retirement Calculator</h2>
+          <p>Project your FIRE number, portfolio timeline, state taxes, and a year-by-year withdrawal plan.</p>
+        </button>
+        <button class="menu-card" data-view="statistics">
+          <span class="menu-card-icon">📊</span>
+          <h2>US Retirement Statistics</h2>
+          <p>See how typical household net worth and retirement savings compare across age brackets.</p>
+        </button>
+        <button class="menu-card" data-view="tax-strategies">
+          <span class="menu-card-icon">🧾</span>
+          <h2>Tax Savings Strategies</h2>
+          <p>A menu of account types and tactics that can lower your lifetime tax bill.</p>
+        </button>
+        <button class="menu-card menu-card-soon" disabled>
+          <span class="menu-card-icon">🧭</span>
+          <h2>Retirement Life <span class="panel-tag">Coming soon</span></h2>
+          <p>Hobbies, travel, and how people actually spend their time once work is optional.</p>
+        </button>
+      </div>
+    </main>
+    <footer class="page-footer">
+      <p>All calculations happen locally in your browser. Detecting your state (optional) sends your coordinates to a free public location-lookup service — nothing else is transmitted or stored.</p>
+    </footer>
+  </div>
+
+  <div id="view-calculator" class="view" hidden>
+    <header class="page-header">
+      <h1>Ember</h1>
+      <p class="tagline">Retirement &amp; FIRE Planner</p>
+    </header>
+
+    <main>
+      <section class="panel" id="panel-numbers">
+        <button class="panel-toggle" aria-expanded="true" aria-controls="panel-numbers-body">
+          <h2>Your numbers</h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-numbers-body">
+          <form id="planner-form">
+            <div class="form-grid">
+              <label>
+                Current age
+                <input type="number" id="current-age" class="plan-input" min="18" max="99" placeholder="e.g. 35" required>
+              </label>
+              <label class="slider-label">
+                Target retirement age
+                <div class="slider-row">
+                  <input type="range" id="retirement-age" class="plan-input" data-format="age" min="19" max="100" step="1" value="65">
+                  <output for="retirement-age" id="retirement-age-output">Age 65</output>
+                </div>
+              </label>
+              <label>
+                Current portfolio value
+                <input type="number" id="current-portfolio" class="plan-input" min="0" step="1000" placeholder="e.g. 150000" required>
+              </label>
+              <label>
+                Annual savings/contributions
+                <input type="number" id="annual-contribution" class="plan-input" min="0" step="500" placeholder="e.g. 24000" required>
+              </label>
+              <label>
+                Desired annual spending in retirement (today's $)
+                <input type="number" id="annual-expenses" class="plan-input" min="0" step="1000" placeholder="e.g. 60000" required>
+              </label>
+              <label class="slider-label">
+                Safe withdrawal rate
+                <div class="slider-row">
+                  <input type="range" id="swr" class="plan-input" data-format="percent" min="2.5" max="6" step="0.25" value="4">
+                  <output for="swr" id="swr-output">4%</output>
+                </div>
+              </label>
+              <label class="slider-label">
+                Expected pre-retirement return (nominal, %/yr)
+                <div class="slider-row">
+                  <input type="range" id="pre-return" class="plan-input" data-format="percent" min="0" max="12" step="0.5" value="7">
+                  <output for="pre-return" id="pre-return-output">7%</output>
+                </div>
+              </label>
+              <label class="slider-label">
+                Expected post-retirement return (nominal, %/yr)
+                <div class="slider-row">
+                  <input type="range" id="post-return" class="plan-input" data-format="percent" min="0" max="12" step="0.5" value="5">
+                  <output for="post-return" id="post-return-output">5%</output>
+                </div>
+              </label>
+              <label class="slider-label">
+                Expected inflation (%/yr)
+                <div class="slider-row">
+                  <input type="range" id="inflation" class="plan-input" data-format="percent" min="0" max="8" step="0.25" value="3">
+                  <output for="inflation" id="inflation-output">3%</output>
+                </div>
+              </label>
+              <label>
+                Tax filing status
+                <select id="filing-status" class="plan-input">
+                  <option value="single">Single</option>
+                  <option value="married">Married filing jointly</option>
+                </select>
+              </label>
+              <label>
+                State of residence in retirement
+                <select id="state" class="plan-input"></select>
+              </label>
+              <label>
+                Compare against another state (optional)
+                <select id="compare-state" class="plan-input"></select>
+              </label>
+            </div>
+
+            <div class="detect-row">
+              <button type="button" id="detect-state-btn" class="secondary-btn">📍 Detect my state</button>
+              <span id="detect-state-status" class="detect-status"></span>
+            </div>
+
+            <button type="submit" class="primary-btn">Calculate my plan</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-results">
+        <button class="panel-toggle" aria-expanded="true" aria-controls="panel-results-body">
+          <h2>Your plan</h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-results-body">
+          <div class="gated-empty">
+            <div class="spinner" hidden></div>
+            <p class="gated-message">Fill in your numbers above to see your plan.</p>
+          </div>
+          <div class="gated-content" hidden>
+            <div class="fire-type">
+              <span class="fire-type-badge" id="fire-type-badge">Traditional FIRE</span>
+              <p id="fire-type-description"></p>
+              <button type="button" class="link-btn" id="see-fire-plan-link">See all FIRE strategies →</button>
+            </div>
+
+            <div class="summary-cards">
+              <div class="card">
+                <span class="card-label">Your FIRE number</span>
+                <span class="card-value" id="fire-number">—</span>
+                <span class="card-note">Portfolio needed to sustain your spending</span>
+              </div>
+              <div class="card">
+                <span class="card-label">Projected FIRE age</span>
+                <span class="card-value" id="fire-age">—</span>
+                <span class="card-note">When your portfolio crosses your FIRE number</span>
+              </div>
+              <div class="card">
+                <span class="card-label">Balance at retirement age</span>
+                <span class="card-value" id="balance-at-retirement">—</span>
+                <span class="card-note">Projected in today's dollars</span>
+              </div>
+              <div class="card">
+                <span class="card-label">Required gross withdrawal</span>
+                <span class="card-value" id="gross-withdrawal">—</span>
+                <span class="card-note">Before-tax amount to net your desired spending</span>
+              </div>
+              <div class="card">
+                <span class="card-label">Coast FIRE number (today)</span>
+                <span class="card-value" id="coast-fire-number">—</span>
+                <span class="card-note">Balance today needed to coast to your FIRE number</span>
+              </div>
+            </div>
+
+            <p id="sustainability" class="status-ok"></p>
+
+            <h3>Portfolio projection</h3>
+            <div id="chart-container" class="chart-container"></div>
+
+            <h3>Contributions vs. investment growth</h3>
+            <div id="contribution-chart-container" class="chart-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-timeline">
+        <button class="panel-toggle" aria-expanded="true" aria-controls="panel-timeline-body">
+          <h2>Your life timeline</h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-timeline-body">
+          <div class="gated-empty">
+            <div class="spinner" hidden></div>
+            <p class="gated-message">Fill in your numbers above to see your plan.</p>
+          </div>
+          <div class="gated-content" hidden>
+            <p class="panel-intro">Key ages along your plan — FIRE milestones, standard benefit ages, and any family milestones from below.</p>
+            <div id="timeline-container" class="chart-container timeline-scroll"></div>
+            <ul class="timeline-legend">
+              <li><i class="legend-swatch" style="background:var(--accent)"></i>FIRE milestones</li>
+              <li><i class="legend-swatch" style="background:#7b8a89"></i>Benefit ages</li>
+              <li><i class="legend-swatch" style="background:#8a5cb0"></i>Family</li>
+              <li><i class="legend-swatch" style="background:var(--warn-text)"></i>Portfolio depleted</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-state">
+        <button class="panel-toggle" aria-expanded="true" aria-controls="panel-state-body">
+          <h2>State tax &amp; cost-of-living comparison</h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-state-body">
+          <div class="gated-empty">
+            <div class="spinner" hidden></div>
+            <p class="gated-message">Fill in your numbers above to see your plan.</p>
+          </div>
+          <div class="gated-content" hidden>
+            <div id="state-comparison" class="state-comparison"></div>
+            <p class="disclaimer">
+              Simplified, illustrative estimates only — not financial, tax, or investment advice. State
+              tax figures are approximate composites and change frequently; federal brackets reflect
+              roughly 2024 figures. Confirm current numbers with a qualified professional.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-taxdeepdive">
+        <button class="panel-toggle" aria-expanded="false" aria-controls="panel-taxdeepdive-body">
+          <h2>Tax deep-dive <span class="panel-tag">Advanced</span></h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-taxdeepdive-body" hidden>
+          <div class="gated-empty">
+            <div class="spinner" hidden></div>
+            <p class="gated-message">Fill in your numbers above to see your plan.</p>
+          </div>
+          <div class="gated-content" hidden>
+            <p class="panel-intro">Where does your withdrawal actually go, and how does the mix of account types you retire with change your year-by-year tax bill? This section runs a separate, more detailed simulation — it doesn't change the simple numbers above.</p>
+
+            <h3>Your first year's withdrawal, broken down</h3>
+            <div id="tax-breakdown-container" class="chart-container"></div>
+
+            <h3>Account mix &amp; assumptions</h3>
+            <div class="form-grid">
+              <label class="slider-label">
+                Traditional 401(k)/IRA
+                <div class="slider-row">
+                  <input type="range" id="split-traditional" class="plan-input" data-format="percent" min="0" max="100" step="5" value="70">
+                  <output for="split-traditional" id="split-traditional-output">70%</output>
+                </div>
+              </label>
+              <label class="slider-label">
+                Roth 401(k)/IRA
+                <div class="slider-row">
+                  <input type="range" id="split-roth" class="plan-input" data-format="percent" min="0" max="100" step="5" value="15">
+                  <output for="split-roth" id="split-roth-output">15%</output>
+                </div>
+              </label>
+              <label class="slider-label">
+                Taxable brokerage
+                <div class="slider-row">
+                  <input type="range" id="split-taxable" class="plan-input" data-format="percent" min="0" max="100" step="5" value="15">
+                  <output for="split-taxable" id="split-taxable-output">15%</output>
+                </div>
+              </label>
+              <label class="slider-label">
+                Taxable account: gains share of balance
+                <div class="slider-row">
+                  <input type="range" id="taxable-gains-fraction" class="plan-input" data-format="percent" min="0" max="100" step="5" value="50">
+                  <output for="taxable-gains-fraction" id="taxable-gains-fraction-output">50%</output>
+                </div>
+              </label>
+              <label>
+                Withdrawal order strategy
+                <select id="withdrawal-strategy" class="plan-input">
+                  <option value="taxable-first">Taxable → Traditional → Roth (conventional)</option>
+                  <option value="traditional-first">Traditional → Taxable → Roth</option>
+                  <option value="proportional">Proportional (blend all three)</option>
+                </select>
+              </label>
+            </div>
+            <p class="disclaimer">Percentages are normalized automatically if they don't add to 100. Traditional withdrawals are taxed as ordinary income computed in isolation (a simplification — real brackets would stack against other income); taxable withdrawals assume a flat long-term capital-gains rate on the gains share only; Roth withdrawals are tax-free.</p>
+
+            <h3>Compare withdrawal-order strategies</h3>
+            <div id="strategy-chart-container" class="chart-container"></div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr><th>Strategy</th><th>Lifetime tax paid</th><th>Longevity</th><th>Balance at 100</th></tr>
+                </thead>
+                <tbody id="strategy-comparison-body"></tbody>
+              </table>
+            </div>
+
+            <h3>Year-by-year plan (selected strategy)</h3>
+            <div class="table-scroll table-scroll-tall">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Age</th><th>Traditional</th><th>Roth</th><th>Taxable</th>
+                    <th>Federal tax</th><th>State tax</th><th>Net spendable</th><th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody id="year-by-year-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-fire-plan">
+        <button class="panel-toggle" aria-expanded="false" aria-controls="panel-fire-plan-body">
+          <h2>FIRE plan</h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-fire-plan-body" hidden>
+          <p class="panel-intro">FIRE stands for <strong>Financial Independence, Retire Early</strong>. Explore the common variants below — once you calculate your plan, we'll flag the one your numbers currently match.</p>
+          <div class="fire-tabs" id="fire-type-tabs"></div>
+          <p id="fire-type-panel-description" class="fire-tab-description"></p>
+
+          <h3>The safe withdrawal rate (4% rule)</h3>
+          <p>The "4% rule" comes from historical studies (notably the Trinity Study) suggesting a portfolio of roughly 60–75% stocks / 25–40% bonds can support a 4% initial withdrawal, adjusted for inflation each year, over a 30-year retirement without running out — in most historical periods. It is a planning heuristic, not a guarantee:</p>
+          <ul>
+            <li><strong>Longer retirements</strong> (very early retirees with 40–50+ year horizons) often use a more conservative 3–3.5% instead.</li>
+            <li><strong>Sequence-of-returns risk</strong> — a market downturn in your first few retirement years — is the biggest threat to a fixed withdrawal plan. Holding 1–2 years of cash/bonds as a buffer, or flexing spending down in bad years, both help.</li>
+            <li>The FIRE number above is calculated as <code>annual spending needed (gross of taxes) ÷ withdrawal rate</code>.</li>
+          </ul>
+
+          <h3>Strategies to get there faster</h3>
+          <ul>
+            <li><strong>Raise your savings rate.</strong> Savings rate — not income alone — is the single biggest lever on how fast you reach FIRE; cutting your largest expenses (housing, transportation) usually moves the needle more than cutting small recurring purchases.</li>
+            <li><strong>Max tax-advantaged accounts first.</strong> See the Tax Savings Strategies page for a fuller menu of accounts and tactics.</li>
+            <li><strong>Consider geographic arbitrage.</strong> Retiring in a state with no income tax or generous retirement-income exclusions (see the comparison above) can meaningfully lower your FIRE number.</li>
+            <li><strong>Plan the healthcare bridge.</strong> Retiring before 65 means bridging to Medicare via ACA marketplace plans, COBRA, a part-time job with benefits (Barista FIRE), or a spouse's plan.</li>
+            <li><strong>Build a withdrawal order strategy.</strong> See the Tax Deep-Dive section above to compare account-withdrawal orderings for your own numbers.</li>
+            <li><strong>Revisit the plan regularly.</strong> Update your inputs at least yearly, and after any major life change — small changes in return assumptions or spending compound significantly over a multi-decade horizon.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-family">
+        <button class="panel-toggle" aria-expanded="false" aria-controls="panel-family-body">
+          <h2>Family &amp; kids planning <span class="panel-tag">Optional</span></h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-family-body" hidden>
+          <p class="panel-intro">Add your children's current ages to see college-year milestones on your timeline, and optionally fold estimated college costs into your projection.</p>
           <div class="form-grid">
             <label>
-              Current age
-              <input type="number" id="current-age" min="18" max="99" value="35" required>
+              Children's current ages (comma-separated)
+              <input type="text" id="children-ages" class="plan-input" placeholder="e.g. 4, 9, 14">
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-college-costs" class="plan-input">
+              Include estimated college costs in projection
             </label>
             <label>
-              Target retirement age
-              <input type="number" id="retirement-age" min="19" max="100" value="55" required>
-            </label>
-            <label>
-              Current portfolio value
-              <input type="number" id="current-portfolio" min="0" step="1000" value="150000" required>
-            </label>
-            <label>
-              Annual savings/contributions
-              <input type="number" id="annual-contribution" min="0" step="500" value="24000" required>
-            </label>
-            <label>
-              Desired annual spending in retirement (today's $)
-              <input type="number" id="annual-expenses" min="0" step="1000" value="60000" required>
-            </label>
-            <label>
-              Safe withdrawal rate
-              <select id="swr">
-                <option value="3">3% (very conservative)</option>
-                <option value="3.5">3.5% (conservative)</option>
-                <option value="4" selected>4% (classic "4% rule")</option>
-                <option value="5">5% (aggressive)</option>
-              </select>
-            </label>
-            <label>
-              Expected pre-retirement return (nominal, %/yr)
-              <input type="number" id="pre-return" min="0" max="15" step="0.1" value="7" required>
-            </label>
-            <label>
-              Expected post-retirement return (nominal, %/yr)
-              <input type="number" id="post-return" min="0" max="15" step="0.1" value="5" required>
-            </label>
-            <label>
-              Expected inflation (%/yr)
-              <input type="number" id="inflation" min="0" max="10" step="0.1" value="3" required>
-            </label>
-            <label>
-              Tax filing status
-              <select id="filing-status">
-                <option value="single">Single</option>
-                <option value="married">Married filing jointly</option>
-              </select>
-            </label>
-            <label>
-              State of residence in retirement
-              <select id="state"></select>
-            </label>
-            <label>
-              Compare against another state (optional)
-              <select id="compare-state"></select>
+              Estimated cost per child, per year
+              <input type="number" id="college-cost-per-year" class="plan-input" min="0" step="1000" value="25000">
             </label>
           </div>
-          <button type="submit" class="primary-btn">Calculate my plan</button>
-        </form>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-results">
-      <button class="panel-toggle" aria-expanded="true" aria-controls="panel-results-body">
-        <h2>Your plan</h2>
-        <span class="chevron" aria-hidden="true"></span>
-      </button>
-      <div class="panel-body" id="panel-results-body">
-        <div class="fire-type">
-          <span class="fire-type-badge" id="fire-type-badge">Traditional FIRE</span>
-          <p id="fire-type-description"></p>
-          <button type="button" class="link-btn" id="see-fire-plan-link">See all FIRE strategies →</button>
+          <p id="family-suggestion" class="panel-intro"></p>
+          <ul id="family-milestones" class="plain-list"></ul>
         </div>
+      </section>
 
-        <div class="summary-cards">
-          <div class="card">
-            <span class="card-label">Your FIRE number</span>
-            <span class="card-value" id="fire-number">—</span>
-            <span class="card-note">Portfolio needed to sustain your spending</span>
-          </div>
-          <div class="card">
-            <span class="card-label">Projected FIRE age</span>
-            <span class="card-value" id="fire-age">—</span>
-            <span class="card-note">When your portfolio crosses your FIRE number</span>
-          </div>
-          <div class="card">
-            <span class="card-label">Balance at retirement age</span>
-            <span class="card-value" id="balance-at-retirement">—</span>
-            <span class="card-note">Projected in today's dollars</span>
-          </div>
-          <div class="card">
-            <span class="card-label">Required gross withdrawal</span>
-            <span class="card-value" id="gross-withdrawal">—</span>
-            <span class="card-note">Before-tax amount to net your desired spending</span>
-          </div>
-          <div class="card">
-            <span class="card-label">Coast FIRE number (today)</span>
-            <span class="card-value" id="coast-fire-number">—</span>
-            <span class="card-note">Balance today needed to coast to your FIRE number</span>
-          </div>
+      <section class="panel" id="panel-life-after">
+        <button class="panel-toggle" aria-expanded="false" aria-controls="panel-life-after-body">
+          <h2>Life after retirement</h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-life-after-body" hidden>
+          <p id="life-after-intro" class="panel-intro">The transition into retirement is as much about time and purpose as it is about money. A few areas worth planning deliberately:</p>
+          <div id="life-after-categories" class="card-grid"></div>
         </div>
+      </section>
+    </main>
 
-        <p id="sustainability" class="status-ok"></p>
+    <footer class="page-footer">
+      <p>All calculations happen locally in your browser. Detecting your state (optional) sends your coordinates to a free public location-lookup service — nothing else is transmitted or stored.</p>
+    </footer>
+  </div>
 
-        <h3>Portfolio projection</h3>
-        <div id="chart-container" class="chart-container"></div>
-
-        <h3>Contributions vs. investment growth</h3>
-        <div id="contribution-chart-container" class="chart-container"></div>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-timeline">
-      <button class="panel-toggle" aria-expanded="true" aria-controls="panel-timeline-body">
-        <h2>Your life timeline</h2>
-        <span class="chevron" aria-hidden="true"></span>
-      </button>
-      <div class="panel-body" id="panel-timeline-body">
-        <p class="panel-intro">Key ages along your plan — FIRE milestones, standard benefit ages, and any family milestones from below.</p>
-        <div id="timeline-container" class="chart-container timeline-scroll"></div>
-        <ul class="timeline-legend">
-          <li><i class="legend-swatch" style="background:var(--accent)"></i>FIRE milestones</li>
-          <li><i class="legend-swatch" style="background:#7b8a89"></i>Benefit ages</li>
-          <li><i class="legend-swatch" style="background:#8a5cb0"></i>Family</li>
-          <li><i class="legend-swatch" style="background:var(--warn-text)"></i>Portfolio depleted</li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-state">
-      <button class="panel-toggle" aria-expanded="true" aria-controls="panel-state-body">
-        <h2>State tax &amp; cost-of-living comparison</h2>
-        <span class="chevron" aria-hidden="true"></span>
-      </button>
-      <div class="panel-body" id="panel-state-body">
-        <div id="state-comparison" class="state-comparison"></div>
-        <p class="disclaimer">
-          Simplified, illustrative estimates only — not financial, tax, or investment advice. State
-          tax figures are approximate composites and change frequently; federal brackets reflect
-          roughly 2024 figures. Confirm current numbers with a qualified professional.
+  <div id="view-statistics" class="view" hidden>
+    <header class="page-header">
+      <h1>US Retirement Statistics</h1>
+      <p class="subtitle">How typical American households compare, by age — useful context before you dig into your own numbers.</p>
+    </header>
+    <main>
+      <section class="panel">
+        <h2>Net worth &amp; retirement savings by age</h2>
+        <p class="panel-intro">
+          Figures are from the Federal Reserve's 2022 Survey of Consumer Finances (the most recent wave,
+          released October 2023). Net worth is the median across <em>all</em> households in the bracket.
+          Retirement-account balance is the median among the roughly 55–65% of households that actually
+          have one — most households without an account would otherwise pull that figure toward zero and
+          make the comparison misleading.
         </p>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-taxdeepdive">
-      <button class="panel-toggle" aria-expanded="false" aria-controls="panel-taxdeepdive-body">
-        <h2>Tax deep-dive <span class="panel-tag">Advanced</span></h2>
-        <span class="chevron" aria-hidden="true"></span>
-      </button>
-      <div class="panel-body" id="panel-taxdeepdive-body" hidden>
-        <p class="panel-intro">Where does your withdrawal actually go, and how does the mix of account types you retire with change your year-by-year tax bill? This section runs a separate, more detailed simulation — it doesn't change the simple numbers above.</p>
-
-        <h3>Your first year's withdrawal, broken down</h3>
-        <div id="tax-breakdown-container" class="chart-container"></div>
-
-        <h3>Account mix &amp; assumptions</h3>
-        <div class="form-grid">
-          <label>
-            Traditional 401(k)/IRA (%)
-            <input type="number" id="split-traditional" min="0" max="100" step="5" value="70">
-          </label>
-          <label>
-            Roth 401(k)/IRA (%)
-            <input type="number" id="split-roth" min="0" max="100" step="5" value="15">
-          </label>
-          <label>
-            Taxable brokerage (%)
-            <input type="number" id="split-taxable" min="0" max="100" step="5" value="15">
-          </label>
-          <label>
-            Taxable account: gains share of balance (%)
-            <input type="number" id="taxable-gains-fraction" min="0" max="100" step="5" value="50">
-          </label>
-          <label>
-            Withdrawal order strategy
-            <select id="withdrawal-strategy">
-              <option value="taxable-first">Taxable → Traditional → Roth (conventional)</option>
-              <option value="traditional-first">Traditional → Taxable → Roth</option>
-              <option value="proportional">Proportional (blend all three)</option>
-            </select>
-          </label>
-        </div>
-        <p class="disclaimer">Percentages are normalized automatically if they don't add to 100. Traditional withdrawals are taxed as ordinary income computed in isolation (a simplification — real brackets would stack against other income); taxable withdrawals assume a flat long-term capital-gains rate on the gains share only; Roth withdrawals are tax-free.</p>
-
-        <h3>Compare withdrawal-order strategies</h3>
-        <div id="strategy-chart-container" class="chart-container"></div>
+        <div id="stats-chart-container" class="chart-container"></div>
         <div class="table-scroll">
           <table class="data-table">
             <thead>
-              <tr><th>Strategy</th><th>Lifetime tax paid</th><th>Longevity</th><th>Balance at 100</th></tr>
+              <tr><th>Age bracket</th><th>Median net worth</th><th>Median retirement balance</th></tr>
             </thead>
-            <tbody id="strategy-comparison-body"></tbody>
+            <tbody id="stats-table-body"></tbody>
           </table>
         </div>
+        <p class="disclaimer">Source: Federal Reserve Survey of Consumer Finances, 2022 wave. Figures are nominal 2022 dollars and will look dated in later years — treat them as a rough benchmark, not a target.</p>
+      </section>
+      <section class="panel">
+        <h2>See how you compare</h2>
+        <p class="panel-intro">These are population medians, not goals — your own plan depends on your spending, your state, and when you want to retire.</p>
+        <button class="primary-btn" data-view="calculator">Go to the calculator →</button>
+      </section>
+    </main>
+  </div>
 
-        <h3>Year-by-year plan (selected strategy)</h3>
-        <div class="table-scroll table-scroll-tall">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Age</th><th>Traditional</th><th>Roth</th><th>Taxable</th>
-                <th>Federal tax</th><th>State tax</th><th>Net spendable</th><th>Balance</th>
-              </tr>
-            </thead>
-            <tbody id="year-by-year-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-fire-plan">
-      <button class="panel-toggle" aria-expanded="false" aria-controls="panel-fire-plan-body">
-        <h2>FIRE plan</h2>
-        <span class="chevron" aria-hidden="true"></span>
-      </button>
-      <div class="panel-body" id="panel-fire-plan-body" hidden>
-        <p class="panel-intro">FIRE stands for <strong>Financial Independence, Retire Early</strong>. Explore the common variants below — we've flagged the one your numbers currently match.</p>
-        <div class="fire-tabs" id="fire-type-tabs"></div>
-        <p id="fire-type-panel-description" class="fire-tab-description"></p>
-
-        <h3>The safe withdrawal rate (4% rule)</h3>
-        <p>The "4% rule" comes from historical studies (notably the Trinity Study) suggesting a portfolio of roughly 60–75% stocks / 25–40% bonds can support a 4% initial withdrawal, adjusted for inflation each year, over a 30-year retirement without running out — in most historical periods. It is a planning heuristic, not a guarantee:</p>
-        <ul>
-          <li><strong>Longer retirements</strong> (very early retirees with 40–50+ year horizons) often use a more conservative 3–3.5% instead.</li>
-          <li><strong>Sequence-of-returns risk</strong> — a market downturn in your first few retirement years — is the biggest threat to a fixed withdrawal plan. Holding 1–2 years of cash/bonds as a buffer, or flexing spending down in bad years, both help.</li>
-          <li>The FIRE number above is calculated as <code>annual spending needed (gross of taxes) ÷ withdrawal rate</code>.</li>
-        </ul>
-
-        <h3>Strategies to get there faster</h3>
-        <ul>
-          <li><strong>Raise your savings rate.</strong> Savings rate — not income alone — is the single biggest lever on how fast you reach FIRE; cutting your largest expenses (housing, transportation) usually moves the needle more than cutting small recurring purchases.</li>
-          <li><strong>Max tax-advantaged accounts first.</strong> 401(k)/403(b), Traditional or Roth IRA, and HSA (a stealth retirement account — triple tax-advantaged) shelter growth from taxes and often should be filled before taxable brokerage investing.</li>
-          <li><strong>Consider geographic arbitrage.</strong> Retiring in a state with no income tax or generous retirement-income exclusions (see the comparison above) can meaningfully lower your FIRE number.</li>
-          <li><strong>Plan the healthcare bridge.</strong> Retiring before 65 means bridging to Medicare via ACA marketplace plans, COBRA, a part-time job with benefits (Barista FIRE), or a spouse's plan.</li>
-          <li><strong>Build a withdrawal order strategy.</strong> See the Tax Deep-Dive section above to compare account-withdrawal orderings for your own numbers.</li>
-          <li><strong>Revisit the plan regularly.</strong> Update your inputs at least yearly, and after any major life change — small changes in return assumptions or spending compound significantly over a multi-decade horizon.</li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-family">
-      <button class="panel-toggle" aria-expanded="false" aria-controls="panel-family-body">
-        <h2>Family &amp; kids planning <span class="panel-tag">Optional</span></h2>
-        <span class="chevron" aria-hidden="true"></span>
-      </button>
-      <div class="panel-body" id="panel-family-body" hidden>
-        <p class="panel-intro">Add your children's current ages to see college-year milestones on your timeline, and optionally fold estimated college costs into your projection.</p>
-        <div class="form-grid">
-          <label>
-            Children's current ages (comma-separated)
-            <input type="text" id="children-ages" placeholder="e.g. 4, 9, 14">
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="include-college-costs">
-            Include estimated college costs in projection
-          </label>
-          <label>
-            Estimated cost per child, per year
-            <input type="number" id="college-cost-per-year" min="0" step="1000" value="25000">
-          </label>
-        </div>
-        <p id="family-suggestion" class="panel-intro"></p>
-        <ul id="family-milestones" class="plain-list"></ul>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-life-after">
-      <button class="panel-toggle" aria-expanded="false" aria-controls="panel-life-after-body">
-        <h2>Life after retirement</h2>
-        <span class="chevron" aria-hidden="true"></span>
-      </button>
-      <div class="panel-body" id="panel-life-after-body" hidden>
-        <p id="life-after-intro" class="panel-intro"></p>
-        <div id="life-after-categories" class="life-categories"></div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="page-footer">
-    <p>All calculations happen locally in your browser — no data is sent anywhere or stored.</p>
-  </footer>
+  <div id="view-tax-strategies" class="view" hidden>
+    <header class="page-header">
+      <h1>Tax Savings Strategies</h1>
+      <p class="subtitle">A menu of accounts and tactics that can lower your lifetime tax bill — the building blocks behind the Tax Deep-Dive in the calculator.</p>
+    </header>
+    <main>
+      <section class="panel">
+        <h2>Strategies</h2>
+        <div id="tax-strategies-grid" class="card-grid"></div>
+        <p class="disclaimer">Contribution limits shown are approximate for 2024/2025 and are adjusted for inflation annually — verify current limits at irs.gov before acting. This is educational information, not tax advice.</p>
+      </section>
+      <section class="panel">
+        <h2>Model your own withdrawal-order strategy</h2>
+        <p class="panel-intro">The Tax Deep-Dive section of the calculator lets you compare Traditional-first, Taxable-first, and Proportional withdrawal orders using your own numbers.</p>
+        <button class="primary-btn" data-view="calculator">Go to the calculator →</button>
+      </section>
+    </main>
+  </div>
 
   <script src="data/states.js"></script>
   <script src="js/tax.js"></script>
@@ -312,6 +463,7 @@
   <script src="js/strategy.js"></script>
   <script src="js/chart.js"></script>
   <script src="js/content.js"></script>
+  <script src="js/geo.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
