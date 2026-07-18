@@ -27,7 +27,7 @@ function normalizeAccountSplit(split) {
   };
 }
 
-function simulateWithdrawalStrategy(input, split, strategyKey, extraExpensesByAge) {
+function simulateWithdrawalStrategy(input, split, strategyKey, adjustments) {
   const {
     currentAge, retirementAge, currentPortfolio, annualContribution,
     annualExpensesToday, filingStatus, stateCode, taxableGainsFraction,
@@ -36,7 +36,8 @@ function simulateWithdrawalStrategy(input, split, strategyKey, extraExpensesByAg
   const preReturn = realReturn(input.preRetirementReturnPct, input.inflationPct);
   const postReturn = realReturn(input.postRetirementReturnPct, input.inflationPct);
   const gainsFraction = taxableGainsFraction > 0 ? taxableGainsFraction : 0.5;
-  const extras = extraExpensesByAge || {};
+  const extras = (adjustments && adjustments.extraExpensesByAge) || {};
+  const externalIncome = (adjustments && adjustments.externalIncomeByAge) || {};
   const norm = normalizeAccountSplit(split);
 
   const buckets = {
@@ -85,7 +86,9 @@ function simulateWithdrawalStrategy(input, split, strategyKey, extraExpensesByAg
     buckets.taxable *= 1 + postReturn;
 
     const extra = extras[age] || 0;
-    const targetTotal = annualExpensesToday + extra;
+    const grossExternal = externalIncome[age] || 0;
+    const netExternal = grossExternal * (stateInfo.taxesSocialSecurity ? 1 - stateInfo.effectiveRetirementTaxRate : 1);
+    const targetTotal = Math.max(0, annualExpensesToday - netExternal) + extra;
     const withdrawals = { traditional: 0, roth: 0, taxable: 0 };
     let federalTaxPaid = 0;
     let stateTaxPaid = 0;
@@ -152,8 +155,8 @@ function simulateWithdrawalStrategy(input, split, strategyKey, extraExpensesByAg
   };
 }
 
-function compareWithdrawalStrategies(input, split, extraExpensesByAge) {
+function compareWithdrawalStrategies(input, split, adjustments) {
   return Object.keys(WITHDRAWAL_STRATEGIES).map((key) =>
-    simulateWithdrawalStrategy(input, split, key, extraExpensesByAge)
+    simulateWithdrawalStrategy(input, split, key, adjustments)
   );
 }

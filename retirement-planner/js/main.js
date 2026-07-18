@@ -55,6 +55,42 @@ function readFamilyInputs(currentAge) {
   };
 }
 
+function readSocialSecurityInputs() {
+  return {
+    annualIncomeEstimate: parseCurrency(document.getElementById("ss-income").value),
+    claimAge: Number(document.getElementById("ss-claim-age").value),
+  };
+}
+
+function readMortgageInputs(currentAge) {
+  return {
+    currentAge,
+    includeMortgage: document.getElementById("include-mortgage").checked,
+    monthlyPayment: parseCurrency(document.getElementById("mortgage-payment").value),
+    yearsRemaining: Number(document.getElementById("mortgage-years").value),
+  };
+}
+
+function readHealthcareInputs(retirementAge, stateCode) {
+  return {
+    retirementAge,
+    stateCode,
+    includeHealthcareBridge: document.getElementById("include-healthcare-bridge").checked,
+    monthlyPremiumAt40: parseCurrency(document.getElementById("healthcare-premium").value),
+  };
+}
+
+/** Merges any number of {age: amount} maps by summing overlapping ages. */
+function mergeAmountMaps(...maps) {
+  const merged = {};
+  maps.forEach((map) => {
+    Object.entries(map).forEach(([age, amount]) => {
+      merged[age] = (merged[age] || 0) + amount;
+    });
+  });
+  return merged;
+}
+
 /** Wires a text input to live-format as "$1,234,567" while preserving cursor position. */
 function formatCurrencyField(input) {
   const reformat = () => {
@@ -162,13 +198,47 @@ function renderStrategyComparisonTable(allResults) {
     .join("");
 }
 
+let lastInput = null;
+let lastAdjustments = null;
+
 function render(input) {
   const familyInput = readFamilyInputs(input.currentAge);
   const familyPlan = buildFamilyPlan(familyInput);
 
-  const result = runProjection(input, familyPlan.extraExpensesByAge);
+  const mortgageInput = readMortgageInputs(input.currentAge);
+  const mortgagePlan = buildMortgagePlan(mortgageInput);
+
+  const healthcareInput = readHealthcareInputs(input.retirementAge, input.stateCode);
+  const healthcarePlan = buildHealthcarePlan(healthcareInput);
+
+  const ssInput = readSocialSecurityInputs();
+  const ssPlan = buildSocialSecurityPlan(ssInput);
+
+  const adjustments = {
+    extraExpensesByAge: mergeAmountMaps(
+      familyPlan.extraExpensesByAge,
+      mortgagePlan.extraExpensesByAge,
+      healthcarePlan.extraExpensesByAge
+    ),
+    externalIncomeByAge: ssPlan.externalIncomeByAge,
+  };
+  lastInput = input;
+  lastAdjustments = adjustments;
+
+  const result = runProjection(input, adjustments);
   const fireType = classifyFireType(input, result);
   const computedFireKey = FIRE_TYPE_KEY_BY_LABEL[fireType.label] || "traditional";
+
+  // --- Social Security card ---
+  const ssBenefitEl = document.getElementById("ss-benefit");
+  const ssBenefitNoteEl = document.getElementById("ss-benefit-note");
+  if (ssPlan.annualBenefit > 0) {
+    ssBenefitEl.textContent = currency(ssPlan.annualBenefit) + " / yr";
+    ssBenefitNoteEl.textContent = `Starting at age ${ssInput.claimAge}, reduces portfolio withdrawals`;
+  } else {
+    ssBenefitEl.textContent = "—";
+    ssBenefitNoteEl.textContent = "Add your income above to estimate";
+  }
 
   // --- Your Plan ---
   document.getElementById("fire-number").textContent = currency(result.fireNumber);
@@ -203,7 +273,8 @@ function render(input) {
   );
 
   // --- Timeline ---
-  const milestones = buildTimelineMilestones(input, result, familyPlan.milestones);
+  const allMilestones = [...familyPlan.milestones, ...mortgagePlan.milestones, ...ssPlan.milestones];
+  const milestones = buildTimelineMilestones(input, result, allMilestones);
   renderTimeline(document.getElementById("timeline-container"), milestones, input.currentAge);
 
   // --- State comparison ---
@@ -220,10 +291,10 @@ function render(input) {
   const gainsFraction = readTaxableGainsFraction();
   const strategyInput = { ...input, taxableGainsFraction: gainsFraction };
   const strategyKey = document.getElementById("withdrawal-strategy").value;
-  const selectedResult = simulateWithdrawalStrategy(strategyInput, split, strategyKey, familyPlan.extraExpensesByAge);
+  const selectedResult = simulateWithdrawalStrategy(strategyInput, split, strategyKey, adjustments);
   renderYearByYearTable(selectedResult);
 
-  const allStrategyResults = compareWithdrawalStrategies(strategyInput, split, familyPlan.extraExpensesByAge);
+  const allStrategyResults = compareWithdrawalStrategies(strategyInput, split, adjustments);
   renderStrategyComparisonTable(allStrategyResults);
   renderStrategyComparisonChart(document.getElementById("strategy-chart-container"), allStrategyResults, input.retirementAge);
 
@@ -450,7 +521,211 @@ document.getElementById("save-pdf-btn").addEventListener("click", () => {
   window.print();
 });
 
+// --- Monte Carlo simulation (run on demand — heavier than the live recompute) ---
+
+document.getElementById("run-montecarlo-btn").addEventListener("click", () => {
+  if (!lastInput) return;
+  const btn = document.getElementById("run-montecarlo-btn");
+  const resultEl = document.getElementById("montecarlo-result");
+  btn.disabled = true;
+  btn.textContent = "Running…";
+  setTimeout(() => {
+    const mc = runMonteCarloSimulation(lastInput, lastAdjustments);
+    resultEl.hidden = false;
+    resultEl.textContent = `${Math.round(mc.successRate * 100)}% of ${mc.numSimulations} simulated markets never ran out of money by age ${MAX_PLANNING_AGE}.`;
+    resultEl.className = mc.successRate >= 0.8 ? "status-ok" : "status-warn";
+    renderMonteCarloFanChart(document.getElementById("montecarlo-chart-container"), mc.bands, lastInput.retirementAge);
+    btn.disabled = false;
+    btn.textContent = "🎲 Run Monte Carlo simulation";
+  }, 30);
+});
+
+// --- Save / load / share a plan ---
+
+function serializePlan() {
+  const data = {};
+  document.querySelectorAll(".plan-input").forEach((el) => {
+    data[el.id] = el.type === "checkbox" ? el.checked : el.value;
+  });
+  return data;
+}
+
+function applyPlan(data) {
+  Object.entries(data).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.type === "checkbox") el.checked = value === true || value === "true";
+    else el.value = value;
+  });
+  document.querySelectorAll(".currency-input").forEach((el) => el.dispatchEvent(new Event("input")));
+  document.querySelectorAll('input[type="range"]').forEach((el) => el.dispatchEvent(new Event("input")));
+  selectedFireTypeKey = null;
+  attemptRender(true);
+}
+
+function inputFromPlanData(data) {
+  return {
+    currentAge: Number(data["current-age"]),
+    retirementAge: Number(data["retirement-age"]),
+    currentPortfolio: parseCurrency(data["current-portfolio"]),
+    annualContribution: parseCurrency(data["annual-contribution"]),
+    preRetirementReturnPct: Number(data["pre-return"]),
+    postRetirementReturnPct: Number(data["post-return"]),
+    inflationPct: Number(data["inflation"]),
+    annualExpensesToday: parseCurrency(data["annual-expenses"]),
+    swrPct: Number(data["swr"]),
+    filingStatus: data["filing-status"],
+    stateCode: data["state"],
+  };
+}
+
+function showPlanIOStatus(message, isError) {
+  const el = document.getElementById("plan-io-status");
+  el.textContent = message;
+  el.className = "detect-status no-print " + (isError ? "detect-status-error" : "detect-status-ok");
+}
+
+document.getElementById("download-plan-btn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(serializePlan(), null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "ember-retirement-plan.json";
+  a.click();
+  URL.revokeObjectURL(url);
+  showPlanIOStatus("Plan downloaded.", false);
+});
+
+document.getElementById("load-plan-btn").addEventListener("click", () => {
+  document.getElementById("load-plan-file").click();
+});
+
+document.getElementById("load-plan-file").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      applyPlan(JSON.parse(reader.result));
+      showPlanIOStatus("Plan loaded.", false);
+    } catch (err) {
+      showPlanIOStatus("Couldn't read that file — make sure it's a plan exported from Ember.", true);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+document.getElementById("copy-link-btn").addEventListener("click", () => {
+  const params = new URLSearchParams(serializePlan()).toString();
+  const url = `${location.origin}${location.pathname}#calculator?${params}`;
+  navigator.clipboard
+    .writeText(url)
+    .then(() => showPlanIOStatus("Link copied to clipboard.", false))
+    .catch(() => showPlanIOStatus("Couldn't copy automatically — select and copy the address bar instead.", true));
+});
+
+function parseInitialHash() {
+  const raw = location.hash.slice(1);
+  const [viewPart, queryPart] = raw.split("?");
+  if (queryPart) {
+    try {
+      applyPlan(Object.fromEntries(new URLSearchParams(queryPart)));
+    } catch (e) {
+      // ignore malformed shared links
+    }
+  }
+  return viewPart || "home";
+}
+
+// --- Saved scenarios (localStorage) ---
+
+const SCENARIO_STORAGE_KEY = "ember-scenarios";
+const MAX_SCENARIOS = 5;
+
+function getScenarios() {
+  try {
+    return JSON.parse(localStorage.getItem(SCENARIO_STORAGE_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveScenarios(list) {
+  localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(list));
+}
+
+function renderScenarios() {
+  const scenarios = getScenarios();
+  const listEl = document.getElementById("scenario-list");
+  const compareBody = document.getElementById("scenario-compare-body");
+
+  if (scenarios.length === 0) {
+    listEl.innerHTML = `<p class="panel-intro">No saved scenarios yet.</p>`;
+    compareBody.innerHTML = "";
+    return;
+  }
+
+  listEl.innerHTML = scenarios
+    .map(
+      (s, i) => `
+      <div class="info-card scenario-card">
+        <h4>${s.name}</h4>
+        <div class="detect-row">
+          <button type="button" class="secondary-btn" data-load-scenario="${i}">Load</button>
+          <button type="button" class="secondary-btn" data-delete-scenario="${i}">Delete</button>
+        </div>
+      </div>
+    `
+    )
+    .join("");
+
+  listEl.querySelectorAll("[data-load-scenario]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const scenarios2 = getScenarios();
+      const idx = Number(btn.getAttribute("data-load-scenario"));
+      if (scenarios2[idx]) applyPlan(scenarios2[idx].data);
+    });
+  });
+  listEl.querySelectorAll("[data-delete-scenario]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const scenarios2 = getScenarios();
+      scenarios2.splice(Number(btn.getAttribute("data-delete-scenario")), 1);
+      saveScenarios(scenarios2);
+      renderScenarios();
+    });
+  });
+
+  compareBody.innerHTML = scenarios
+    .map((s) => {
+      const scenarioInput = inputFromPlanData(s.data);
+      const result = runProjection(scenarioInput);
+      return `
+        <tr>
+          <td>${s.name}</td>
+          <td>${currency(result.fireNumber)}</td>
+          <td>${result.fireAge !== null ? "Age " + result.fireAge : "Not reached"}</td>
+          <td>${result.sustainable ? "Lasts to 100" : "Runs out at age " + result.depletedAge}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+document.getElementById("save-scenario-btn").addEventListener("click", () => {
+  const nameInput = document.getElementById("scenario-name");
+  const scenarios = getScenarios();
+  const name = nameInput.value.trim() || `Scenario ${scenarios.length + 1}`;
+  scenarios.push({ name, data: serializePlan(), savedAt: Date.now() });
+  while (scenarios.length > MAX_SCENARIOS) scenarios.shift();
+  saveScenarios(scenarios);
+  nameInput.value = "";
+  renderScenarios();
+});
+
 populateStateDropdowns();
 renderStaticContent();
+renderScenarios();
+const initialView = parseInitialHash();
 attemptRender(false);
-showView(location.hash.slice(1) || "home");
+showView(initialView);

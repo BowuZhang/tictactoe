@@ -49,7 +49,7 @@
       </div>
     </main>
     <footer class="page-footer">
-      <p>All calculations happen locally in your browser. Detecting your state (optional) sends your coordinates to a free public location-lookup service — nothing else is transmitted or stored.</p>
+      <p>All calculations happen locally in your browser. Detecting your state (optional) sends your coordinates to a free public location-lookup service. Saved scenarios live only in this browser's local storage. Nothing is transmitted to us or stored on any server.</p>
     </footer>
   </div>
 
@@ -146,6 +146,19 @@
                 <select id="compare-state" class="plan-input"></select>
                 <span class="input-tip" hidden>Optional — pick a second state to see it side-by-side in the comparison below.</span>
               </label>
+              <label>
+                <span class="label-row">Est. annual income, for Social Security <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
+                <input type="text" inputmode="numeric" id="ss-income" class="plan-input currency-input" placeholder="e.g. $80,000 (optional)">
+                <span class="input-tip" hidden>Optional. A rough stand-in for your career-average earnings, used to estimate a Social Security benefit — leave blank to exclude Social Security entirely.</span>
+              </label>
+              <label class="slider-label">
+                <span class="label-row">Social Security claiming age <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
+                <div class="slider-row">
+                  <input type="range" id="ss-claim-age" class="plan-input" data-format="age" min="62" max="70" step="1" value="67">
+                  <output for="ss-claim-age" id="ss-claim-age-output">Age 67</output>
+                </div>
+                <span class="input-tip" hidden>Claiming earlier permanently reduces your benefit; claiming later (up to 70) permanently increases it.</span>
+              </label>
             </div>
 
             <div class="detect-row">
@@ -201,6 +214,11 @@
                 <span class="card-value" id="coast-fire-number">—</span>
                 <span class="card-note">Balance today needed to coast to your FIRE number</span>
               </div>
+              <div class="card">
+                <span class="card-label">Est. Social Security</span>
+                <span class="card-value" id="ss-benefit">—</span>
+                <span class="card-note" id="ss-benefit-note">Add your income above to estimate</span>
+              </div>
             </div>
 
             <p id="sustainability" class="status-ok"></p>
@@ -211,8 +229,16 @@
             <h3>Contributions vs. investment growth</h3>
             <div id="contribution-chart-container" class="chart-container"></div>
 
-            <button type="button" id="save-pdf-btn" class="secondary-btn no-print">🖨️ Save plan as PDF</button>
-            <p class="disclaimer no-print">Opens your browser's print dialog — choose "Save as PDF" as the destination.</p>
+            <h3 class="no-print">Save &amp; share</h3>
+            <div class="detect-row no-print">
+              <button type="button" id="save-pdf-btn" class="secondary-btn">🖨️ Save as PDF</button>
+              <button type="button" id="download-plan-btn" class="secondary-btn">💾 Download plan</button>
+              <button type="button" id="load-plan-btn" class="secondary-btn">📂 Load plan</button>
+              <button type="button" id="copy-link-btn" class="secondary-btn">🔗 Copy link</button>
+              <input type="file" id="load-plan-file" accept="application/json" hidden>
+            </div>
+            <span id="plan-io-status" class="detect-status no-print"></span>
+            <p class="disclaimer no-print">"Save as PDF" opens your browser's print dialog. "Download plan" saves your inputs as a small file you can reload later with "Load plan." "Copy link" encodes your inputs into a URL.</p>
           </div>
         </div>
       </section>
@@ -408,6 +434,82 @@
         </div>
       </section>
 
+      <section class="panel" id="panel-housing">
+        <button class="panel-toggle" aria-expanded="false" aria-controls="panel-housing-body">
+          <h2>Housing, healthcare &amp; debt <span class="panel-tag">Optional</span></h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-housing-body" hidden>
+          <h3>Mortgage / debt payoff</h3>
+          <p class="panel-intro">Assumes your "desired annual spending" above is your steady-state budget after this is paid off — this adds the payment back as an extra cost for the years until then.</p>
+          <div class="form-grid">
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-mortgage" class="plan-input">
+              Include mortgage/debt payoff in projection
+            </label>
+            <label>
+              <span class="label-row">Monthly payment <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
+              <input type="text" inputmode="numeric" id="mortgage-payment" class="plan-input currency-input" placeholder="e.g. $2,000">
+              <span class="input-tip" hidden>Your current total monthly mortgage or debt payment.</span>
+            </label>
+            <label>
+              <span class="label-row">Years remaining <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
+              <input type="number" id="mortgage-years" class="plan-input" min="0" max="40" placeholder="e.g. 18">
+              <span class="input-tip" hidden>How many years left until it's paid off — determines the payoff age shown on your timeline.</span>
+            </label>
+          </div>
+
+          <h3>Healthcare bridge (pre-Medicare)</h3>
+          <p class="panel-intro">If you retire before 65, this estimates the cost of health coverage until Medicare eligibility, using a simplified, unsubsidized ACA benchmark — most early retirees qualify for premium tax credits that lower this, so treat it as a conservative upper bound.</p>
+          <div class="form-grid">
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-healthcare-bridge" class="plan-input">
+              Include healthcare bridge cost in projection
+            </label>
+            <label>
+              <span class="label-row">Est. monthly premium today (age ~40) <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
+              <input type="text" inputmode="numeric" id="healthcare-premium" class="plan-input currency-input" placeholder="e.g. $500">
+              <span class="input-tip" hidden>A benchmark premium at age 40, scaled up for age and your state's cost of living to estimate your actual bridge cost.</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-montecarlo">
+        <button class="panel-toggle" aria-expanded="false" aria-controls="panel-montecarlo-body">
+          <h2>Risk analysis (Monte Carlo) <span class="panel-tag">Advanced</span></h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-montecarlo-body" hidden>
+          <p class="panel-intro">Instead of one fixed-return projection, this runs 500 simulations with randomized annual returns (centered on your assumed returns above, with typical volatility for that kind of allocation) to see what share of outcomes never ran out of money. These are simulated random returns, not actual historical market sequences.</p>
+          <button type="button" id="run-montecarlo-btn" class="secondary-btn">🎲 Run Monte Carlo simulation</button>
+          <p id="montecarlo-result" class="status-ok" hidden></p>
+          <div id="montecarlo-chart-container" class="chart-container"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-scenarios">
+        <button class="panel-toggle" aria-expanded="false" aria-controls="panel-scenarios-body">
+          <h2>Saved scenarios <span class="panel-tag">Optional</span></h2>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-body" id="panel-scenarios-body" hidden>
+          <p class="panel-intro">Save your current inputs as a named "what-if" (e.g. "Retire at 55" vs. "Retire at 60") and compare up to 5 side by side. Saved only in this browser's local storage — never transmitted anywhere.</p>
+          <div class="detect-row">
+            <input type="text" id="scenario-name" placeholder="Scenario name, e.g. Retire at 55">
+            <button type="button" id="save-scenario-btn" class="secondary-btn">Save as scenario</button>
+          </div>
+          <div id="scenario-list" class="card-grid"></div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Scenario</th><th>FIRE number</th><th>FIRE age</th><th>Sustainability</th></tr></thead>
+              <tbody id="scenario-compare-body"></tbody>
+            </table>
+          </div>
+          <p class="disclaimer">Comparison uses each scenario's core numbers only — Social Security, mortgage, healthcare, and family adjustments aren't included here.</p>
+        </div>
+      </section>
+
       <section class="panel" id="panel-life-after">
         <button class="panel-toggle" aria-expanded="false" aria-controls="panel-life-after-body">
           <h2>Life after retirement</h2>
@@ -421,7 +523,7 @@
     </main>
 
     <footer class="page-footer">
-      <p>All calculations happen locally in your browser. Detecting your state (optional) sends your coordinates to a free public location-lookup service — nothing else is transmitted or stored.</p>
+      <p>All calculations happen locally in your browser. Detecting your state (optional) sends your coordinates to a free public location-lookup service. Saved scenarios live only in this browser's local storage. Nothing is transmitted to us or stored on any server.</p>
     </footer>
   </div>
 
@@ -506,6 +608,10 @@
   <script src="js/tax.js"></script>
   <script src="js/projection.js"></script>
   <script src="js/family.js"></script>
+  <script src="js/mortgage.js"></script>
+  <script src="js/healthcare.js"></script>
+  <script src="js/socialsecurity.js"></script>
+  <script src="js/montecarlo.js"></script>
   <script src="js/timeline.js"></script>
   <script src="js/strategy.js"></script>
   <script src="js/chart.js"></script>

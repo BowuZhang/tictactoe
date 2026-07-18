@@ -221,6 +221,69 @@ function renderStrategyComparisonChart(containerEl, strategyResults, retirementA
   `;
 }
 
+/** Monte Carlo fan chart: shaded 10th-90th percentile band with a median line. */
+function renderMonteCarloFanChart(containerEl, bands, retirementAge) {
+  const width = Math.max(280, Math.min(720, containerEl.clientWidth || 720));
+  const isNarrow = width < 420;
+  const height = isNarrow ? 260 : 320;
+  const margin = { top: 20, right: isNarrow ? 8 : 20, bottom: isNarrow ? 32 : 36, left: isNarrow ? 46 : 64 };
+  const tickFontSize = isNarrow ? 11 : 12;
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+
+  const minAge = bands[0].age;
+  const maxAge = bands[bands.length - 1].age;
+  const maxBalance = Math.max(...bands.map((b) => b.p90), 1) * 1.08;
+
+  const xScale = (age) => margin.left + ((age - minAge) / Math.max(1, maxAge - minAge)) * innerW;
+  const yScale = (bal) => margin.top + innerH - (bal / maxBalance) * innerH;
+
+  const topPath = bands.map((b) => `${xScale(b.age).toFixed(1)},${yScale(b.p90).toFixed(1)}`);
+  const bottomPath = bands
+    .slice()
+    .reverse()
+    .map((b) => `${xScale(b.age).toFixed(1)},${yScale(b.p10).toFixed(1)}`);
+  const bandArea = `M ${topPath.join(" L ")} L ${bottomPath.join(" L ")} Z`;
+  const medianLine = bands
+    .map((b, i) => `${i === 0 ? "M" : "L"} ${xScale(b.age).toFixed(1)} ${yScale(b.p50).toFixed(1)}`)
+    .join(" ");
+
+  const retireX = xScale(retirementAge).toFixed(1);
+
+  const tickCount = isNarrow ? 4 : 5;
+  let yTicks = "";
+  for (let i = 0; i <= tickCount; i++) {
+    const val = (maxBalance / tickCount) * i;
+    const y = yScale(val).toFixed(1);
+    yTicks += `
+      <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" class="chart-grid" />
+      <text x="${margin.left - 8}" y="${Number(y) + 4}" class="chart-axis-label" font-size="${tickFontSize}" text-anchor="end">${formatCurrencyShort(val)}</text>
+    `;
+  }
+  const targetTicks = isNarrow ? 4 : 8;
+  const ageStep = Math.max(1, Math.round((maxAge - minAge) / targetTicks));
+  let xTicks = "";
+  for (let age = minAge; age <= maxAge; age += ageStep) {
+    const x = xScale(age).toFixed(1);
+    xTicks += `<text x="${x}" y="${height - margin.bottom + 18}" class="chart-axis-label" font-size="${tickFontSize}" text-anchor="middle">${age}</text>`;
+  }
+
+  containerEl.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" class="projection-svg" role="img" aria-label="Monte Carlo simulated portfolio balance range by age">
+      ${yTicks}
+      <path d="${bandArea}" class="mc-band" />
+      <path d="${medianLine}" class="chart-line" fill="none" />
+      <line x1="${retireX}" y1="${margin.top}" x2="${retireX}" y2="${height - margin.bottom}" class="chart-retire-line" />
+      ${xTicks}
+      <text x="${width / 2}" y="${height - 4}" class="chart-axis-title" font-size="${tickFontSize}" text-anchor="middle">Age</text>
+    </svg>
+    <div class="chart-legend">
+      <span><i class="legend-swatch" style="background:var(--accent)"></i>Median outcome</span>
+      <span><i class="legend-swatch legend-mc-band"></i>10th–90th percentile range</span>
+    </div>
+  `;
+}
+
 /** Grouped bar chart: two series (e.g. net worth vs. retirement balance) per labeled category. */
 function renderGroupedBarChart(containerEl, categories, seriesA, seriesB) {
   const width = Math.max(280, Math.min(720, containerEl.clientWidth || 720));

@@ -15,19 +15,33 @@ function realReturn(nominalRatePct, inflationRatePct) {
 }
 
 /**
+ * Computes the gross portfolio withdrawal needed in a single retirement
+ * year, after netting out any external income (e.g. Social Security)
+ * available that year. External income is taxed at the state's Social
+ * Security rate if that state taxes it, otherwise assumed untaxed — federal
+ * partial taxation of Social Security is not modeled (a simplification).
+ */
+function yearlyPortfolioWithdrawal(annualExpensesToday, externalIncomeThisYear, filingStatus, stateInfo) {
+  const netExternal = externalIncomeThisYear * (stateInfo.taxesSocialSecurity ? 1 - stateInfo.effectiveRetirementTaxRate : 1);
+  const neededNet = Math.max(0, annualExpensesToday - netExternal);
+  return neededNet > 0 ? grossUpForTaxes(neededNet, filingStatus, stateInfo) : 0;
+}
+
+/**
  * Runs a full accumulation + drawdown projection.
  *
  * @param {object} input
  *   currentAge, retirementAge, currentPortfolio, annualContribution,
  *   preRetirementReturnPct, postRetirementReturnPct, inflationPct,
  *   annualExpensesToday, swrPct, filingStatus, stateCode
- * @param {Object<number, number>} [extraExpensesByAge] optional one-off
- *   expenses (e.g. a child's college years) keyed by the age they hit,
- *   subtracted from the balance in that year in addition to normal
- *   contributions/withdrawals.
+ * @param {object} [adjustments]
+ *   extraExpensesByAge: {age: amount} one-off costs (college, healthcare
+ *     bridge, mortgage) subtracted directly from the balance each year.
+ *   externalIncomeByAge: {age: amount} gross external income (e.g. Social
+ *     Security) that reduces the portfolio withdrawal needed that year.
  * @returns {object} projection results
  */
-function runProjection(input, extraExpensesByAge) {
+function runProjection(input, adjustments) {
   const {
     currentAge,
     retirementAge,
@@ -41,7 +55,8 @@ function runProjection(input, extraExpensesByAge) {
     filingStatus,
     stateCode,
   } = input;
-  const extras = extraExpensesByAge || {};
+  const extras = (adjustments && adjustments.extraExpensesByAge) || {};
+  const externalIncome = (adjustments && adjustments.externalIncomeByAge) || {};
 
   const stateInfo = STATE_DATA[stateCode];
   const preReturn = realReturn(preRetirementReturnPct, inflationPct);
@@ -49,7 +64,8 @@ function runProjection(input, extraExpensesByAge) {
   const swr = swrPct / 100;
 
   // Gross annual withdrawal needed (today's dollars) to net the desired
-  // after-tax spending, accounting for federal + state tax on withdrawals.
+  // after-tax spending, ignoring external income — this is the
+  // conservative, fully-self-funded figure used for the FIRE number.
   const grossAnnualWithdrawal = grossUpForTaxes(annualExpensesToday, filingStatus, stateInfo);
   const fireNumber = grossAnnualWithdrawal / swr;
 
@@ -78,7 +94,8 @@ function runProjection(input, extraExpensesByAge) {
   let depletedAge = null;
   let drawdownBalance = balance;
   for (let age = retirementAge + 1; age <= MAX_PLANNING_AGE; age++) {
-    drawdownBalance = drawdownBalance * (1 + postReturn) - grossAnnualWithdrawal - (extras[age] || 0);
+    const withdrawal = yearlyPortfolioWithdrawal(annualExpensesToday, externalIncome[age] || 0, filingStatus, stateInfo);
+    drawdownBalance = drawdownBalance * (1 + postReturn) - withdrawal - (extras[age] || 0);
     points.push({ age, balance: Math.max(0, drawdownBalance), phase: "drawdown" });
     if (drawdownBalance <= 0 && depletedAge === null) {
       depletedAge = age;

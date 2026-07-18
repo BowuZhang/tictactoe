@@ -160,6 +160,11 @@ body {
   margin-top: 1rem;
 }
 
+.detect-row input[type="text"] {
+  flex: 1;
+  min-width: 180px;
+}
+
 .secondary-btn {
   background: #eef6f2;
   color: var(--accent-dark);
@@ -536,6 +541,12 @@ input:focus, select:focus {
 .legend-net { background: #1f7a5c; }
 .legend-federal { background: #8a5cb0; }
 .legend-state { background: #c07a1e; }
+.legend-mc-band { background: rgba(31, 122, 92, 0.25); }
+
+.mc-band {
+  fill: rgba(31, 122, 92, 0.18);
+  stroke: none;
+}
 
 .timeline-legend {
   list-style: none;
