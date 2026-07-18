@@ -59,6 +59,8 @@ function buildStateCard(stateCode, input, result) {
 }
 
 function render(input) {
+  resultsSection.hidden = false;
+
   const result = runProjection(input);
   const fireType = classifyFireType(input, result);
 
@@ -91,8 +93,6 @@ function render(input) {
     html += buildStateCard(compareStateSelect.value, input, result);
   }
   stateCards.innerHTML = html;
-
-  resultsSection.hidden = false;
 }
 
 form.addEventListener("submit", (e) => {
@@ -102,6 +102,13 @@ form.addEventListener("submit", (e) => {
 
 compareStateSelect.addEventListener("change", () => {
   if (!resultsSection.hidden) render(readInputs());
+});
+
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  if (resultsSection.hidden) return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => render(readInputs()), 150);
 });
 
 // FIRE guide accordion
