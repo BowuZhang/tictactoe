@@ -14,7 +14,7 @@
       <button class="topnav-link" data-view="calculator">Calculator</button>
       <button class="topnav-link" data-view="statistics">Statistics</button>
       <button class="topnav-link" data-view="tax-strategies">Tax Strategies</button>
-      <button class="topnav-link" disabled title="Coming soon">Retirement Life</button>
+      <button class="topnav-link" data-view="retirement-life">Retirement Life</button>
     </div>
   </nav>
 
@@ -41,10 +41,10 @@
           <h2>Tax Savings Strategies</h2>
           <p>A menu of account types and tactics that can lower your lifetime tax bill.</p>
         </button>
-        <button class="menu-card menu-card-soon" disabled>
+        <button class="menu-card" data-view="retirement-life">
           <span class="menu-card-icon">🧭</span>
-          <h2>Retirement Life <span class="panel-tag">Coming soon</span></h2>
-          <p>Hobbies, travel, and how people actually spend their time once work is optional.</p>
+          <h2>Retirement Life</h2>
+          <p>Take the quiz to find your retirement personality, then browse activity ideas for all eight types.</p>
         </button>
       </div>
     </main>
@@ -604,6 +604,27 @@
     </main>
   </div>
 
+  <div id="view-retirement-life" class="view" hidden>
+    <header class="page-header">
+      <h1>Retirement Life</h1>
+      <p class="subtitle">Money is only half the plan. What are you actually going to <em>do</em> with all that time? Take the quiz — or just skip to browsing.</p>
+    </header>
+    <main>
+      <section class="panel" id="quiz-panel">
+        <h2>What's your retirement personality?</h2>
+        <div id="quiz-question-container"></div>
+        <div id="quiz-result-container" hidden></div>
+      </section>
+
+      <section class="panel">
+        <h2>Browse every personality</h2>
+        <p class="panel-intro">Not feeling the quiz? Explore all eight and steal ideas from more than one — nobody's making you pick just one personality.</p>
+        <div class="personality-tabs" id="personality-tabs"></div>
+        <div id="personality-detail"></div>
+      </section>
+    </main>
+  </div>
+
   <script src="data/states.js"></script>
   <script src="js/tax.js"></script>
   <script src="js/projection.js"></script>
@@ -616,6 +637,7 @@
   <script src="js/strategy.js"></script>
   <script src="js/chart.js"></script>
   <script src="js/content.js"></script>
+  <script src="js/retirementlife.js"></script>
   <script src="js/geo.js"></script>
   <script src="js/main.js"></script>
 </body>

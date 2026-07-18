@@ -465,7 +465,7 @@ window.addEventListener("resize", () => {
 
 // --- Page navigation ---
 
-const VIEWS = ["home", "calculator", "statistics", "tax-strategies"];
+const VIEWS = ["home", "calculator", "statistics", "tax-strategies", "retirement-life"];
 
 function showView(name) {
   if (!VIEWS.includes(name)) name = "home";
@@ -723,9 +723,126 @@ document.getElementById("save-scenario-btn").addEventListener("click", () => {
   renderScenarios();
 });
 
+// --- Retirement Life: personality quiz ---
+
+let quizIndex = 0;
+let quizScores = {};
+
+function resetQuiz() {
+  quizIndex = 0;
+  quizScores = {};
+  QUIZ_TYPE_ORDER.forEach((t) => (quizScores[t] = 0));
+  document.getElementById("quiz-result-container").hidden = true;
+  document.getElementById("quiz-question-container").hidden = false;
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion() {
+  const q = QUIZ_QUESTIONS[quizIndex];
+  const container = document.getElementById("quiz-question-container");
+  container.innerHTML = `
+    <p class="quiz-progress">Question ${quizIndex + 1} of ${QUIZ_QUESTIONS.length}</p>
+    <h3 class="quiz-question">${q.question}</h3>
+    <div class="quiz-options">
+      ${q.options.map((opt) => `<button type="button" class="quiz-option" data-type="${opt.type}">${opt.text}</button>`).join("")}
+    </div>
+  `;
+  container.querySelectorAll(".quiz-option").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      quizScores[btn.getAttribute("data-type")]++;
+      quizIndex++;
+      if (quizIndex < QUIZ_QUESTIONS.length) renderQuizQuestion();
+      else showQuizResult();
+    });
+  });
+}
+
+function findPersonality(key) {
+  return RETIREMENT_PERSONALITIES.find((p) => p.key === key);
+}
+
+function buildPersonalityResultCard(key) {
+  const p = findPersonality(key);
+  return `
+    <div class="personality-result-card" style="--tab-color:${p.color}">
+      <span class="personality-emoji-big">${p.emoji}</span>
+      <h3>You're ${p.label}!</h3>
+      <p class="personality-tagline">"${p.tagline}"</p>
+      <p>${p.description}</p>
+    </div>
+  `;
+}
+
+function showQuizResult() {
+  document.getElementById("quiz-question-container").hidden = true;
+  const maxScore = Math.max(...Object.values(quizScores));
+  const winners = QUIZ_TYPE_ORDER.filter((t) => quizScores[t] === maxScore);
+  const resultEl = document.getElementById("quiz-result-container");
+  resultEl.hidden = false;
+  const intro =
+    winners.length > 1
+      ? `<p class="quiz-tie-note">🎉 It's a close one — you're a genuine blend of ${winners.length} types:</p>`
+      : "";
+  resultEl.innerHTML = `
+    ${intro}
+    ${winners.map(buildPersonalityResultCard).join("")}
+    <div class="detect-row">
+      <button type="button" class="secondary-btn" id="retake-quiz-btn">🔄 Retake the quiz</button>
+      <button type="button" class="primary-btn" id="jump-to-activities-btn">See my activities ↓</button>
+    </div>
+  `;
+  document.getElementById("retake-quiz-btn").addEventListener("click", resetQuiz);
+  document.getElementById("jump-to-activities-btn").addEventListener("click", () => {
+    selectPersonalityTab(winners[0]);
+    document.getElementById("personality-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+let activePersonalityKey = "adventurer";
+
+function renderPersonalityTabs(activeKey) {
+  activePersonalityKey = activeKey;
+  const tabsEl = document.getElementById("personality-tabs");
+  tabsEl.innerHTML = RETIREMENT_PERSONALITIES.map(
+    (p) => `
+      <button type="button" class="personality-tab ${p.key === activeKey ? "active" : ""}" data-personality-key="${p.key}" style="--tab-color:${p.color}">
+        <span>${p.emoji}</span> ${p.label}
+      </button>
+    `
+  ).join("");
+  tabsEl.querySelectorAll(".personality-tab").forEach((btn) => {
+    btn.addEventListener("click", () => selectPersonalityTab(btn.getAttribute("data-personality-key")));
+  });
+  renderPersonalityDetail(activeKey);
+}
+
+function renderPersonalityDetail(key) {
+  const p = findPersonality(key);
+  document.getElementById("personality-detail").innerHTML = `
+    <div class="personality-detail-card" style="--tab-color:${p.color}">
+      <div class="personality-detail-header">
+        <span class="personality-emoji-big">${p.emoji}</span>
+        <div>
+          <h3>${p.label}</h3>
+          <p class="personality-tagline">"${p.tagline}"</p>
+        </div>
+      </div>
+      <p>${p.description}</p>
+      <h4>Activities to steal</h4>
+      <ul class="activity-list">${p.activities.map((a) => `<li>${a}</li>`).join("")}</ul>
+    </div>
+  `;
+}
+
+function selectPersonalityTab(key) {
+  renderPersonalityTabs(key);
+}
+
 populateStateDropdowns();
 renderStaticContent();
 renderScenarios();
+resetQuiz();
+renderPersonalityTabs(activePersonalityKey);
 const initialView = parseInitialHash();
 attemptRender(false);
 showView(initialView);
