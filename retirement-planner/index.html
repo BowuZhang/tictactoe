@@ -9,7 +9,8 @@
 <body>
   <nav class="topnav">
     <button class="topnav-brand" data-view="home">🔥 Ember</button>
-    <div class="topnav-links">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu" aria-expanded="false" aria-controls="topnav-links">☰</button>
+    <div class="topnav-links" id="topnav-links">
       <button class="topnav-link" data-view="calculator">Calculator</button>
       <button class="topnav-link" data-view="statistics">Statistics</button>
       <button class="topnav-link" data-view="tax-strategies">Tax Strategies</button>
@@ -33,7 +34,7 @@
         <button class="menu-card" data-view="statistics">
           <span class="menu-card-icon">📊</span>
           <h2>US Retirement Statistics</h2>
-          <p>See how typical household net worth and retirement savings compare across age brackets.</p>
+          <p>See how typical household net worth and retirement savings compare across age brackets and wealth percentiles.</p>
         </button>
         <button class="menu-card" data-view="tax-strategies">
           <span class="menu-card-icon">🧾</span>
@@ -68,70 +69,82 @@
           <form id="planner-form">
             <div class="form-grid">
               <label>
-                Current age
+                <span class="label-row">Current age <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <input type="number" id="current-age" class="plan-input" min="18" max="99" placeholder="e.g. 35" required>
+                <span class="input-tip" hidden>Your age today — the starting point for the whole projection.</span>
               </label>
               <label class="slider-label">
-                Target retirement age
+                <span class="label-row">Target retirement age <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <div class="slider-row">
                   <input type="range" id="retirement-age" class="plan-input" data-format="age" min="19" max="100" step="1" value="65">
                   <output for="retirement-age" id="retirement-age-output">Age 65</output>
                 </div>
+                <span class="input-tip" hidden>The age you're aiming to stop full-time work. Drag to see how it changes your FIRE number and timeline.</span>
               </label>
               <label>
-                Current portfolio value
-                <input type="number" id="current-portfolio" class="plan-input" min="0" step="1000" placeholder="e.g. 150000" required>
+                <span class="label-row">Current portfolio value <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
+                <input type="text" inputmode="numeric" id="current-portfolio" class="plan-input currency-input" placeholder="e.g. $150,000" required>
+                <span class="input-tip" hidden>The total value of your investable assets today — retirement accounts, brokerage, savings earmarked for retirement. Exclude your home unless you plan to sell it to fund retirement.</span>
               </label>
               <label>
-                Annual savings/contributions
-                <input type="number" id="annual-contribution" class="plan-input" min="0" step="500" placeholder="e.g. 24000" required>
+                <span class="label-row">Annual savings/contributions <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
+                <input type="text" inputmode="numeric" id="annual-contribution" class="plan-input currency-input" placeholder="e.g. $24,000" required>
+                <span class="input-tip" hidden>How much you add to your portfolio each year from savings, before any investment growth.</span>
               </label>
               <label>
-                Desired annual spending in retirement (today's $)
-                <input type="number" id="annual-expenses" class="plan-input" min="0" step="1000" placeholder="e.g. 60000" required>
+                <span class="label-row">Desired annual spending in retirement <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
+                <input type="text" inputmode="numeric" id="annual-expenses" class="plan-input currency-input" placeholder="e.g. $60,000" required>
+                <span class="input-tip" hidden>How much you expect to spend per year in retirement, in today's dollars — not your current income, your expected spending.</span>
               </label>
               <label class="slider-label">
-                Safe withdrawal rate
+                <span class="label-row">Safe withdrawal rate <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <div class="slider-row">
                   <input type="range" id="swr" class="plan-input" data-format="percent" min="2.5" max="6" step="0.25" value="4">
                   <output for="swr" id="swr-output">4%</output>
                 </div>
+                <span class="input-tip" hidden>The share of your portfolio you withdraw each year in retirement. 4% is the classic starting point (see the FIRE Plan section) — lower is more conservative for longer retirements.</span>
               </label>
               <label class="slider-label">
-                Expected pre-retirement return (nominal, %/yr)
+                <span class="label-row">Expected pre-retirement return <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <div class="slider-row">
                   <input type="range" id="pre-return" class="plan-input" data-format="percent" min="0" max="12" step="0.5" value="7">
                   <output for="pre-return" id="pre-return-output">7%</output>
                 </div>
+                <span class="input-tip" hidden>Average annual investment return you expect before retirement (nominal, not inflation-adjusted). 7% is a common assumption for a stock-heavy portfolio.</span>
               </label>
               <label class="slider-label">
-                Expected post-retirement return (nominal, %/yr)
+                <span class="label-row">Expected post-retirement return <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <div class="slider-row">
                   <input type="range" id="post-return" class="plan-input" data-format="percent" min="0" max="12" step="0.5" value="5">
                   <output for="post-return" id="post-return-output">5%</output>
                 </div>
+                <span class="input-tip" hidden>Your expected return in retirement — often set lower than pre-retirement to reflect a more conservative allocation.</span>
               </label>
               <label class="slider-label">
-                Expected inflation (%/yr)
+                <span class="label-row">Expected inflation <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <div class="slider-row">
                   <input type="range" id="inflation" class="plan-input" data-format="percent" min="0" max="8" step="0.25" value="3">
                   <output for="inflation" id="inflation-output">3%</output>
                 </div>
+                <span class="input-tip" hidden>Expected average annual inflation. Everything in this tool is calculated in today's dollars using this rate.</span>
               </label>
               <label>
-                Tax filing status
+                <span class="label-row">Tax filing status <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <select id="filing-status" class="plan-input">
                   <option value="single">Single</option>
                   <option value="married">Married filing jointly</option>
                 </select>
+                <span class="input-tip" hidden>Affects the federal tax brackets and standard deduction used to estimate your tax bill.</span>
               </label>
               <label>
-                State of residence in retirement
+                <span class="label-row">State of residence in retirement <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <select id="state" class="plan-input"></select>
+                <span class="input-tip" hidden>Where you plan to live in retirement — drives the state tax and cost-of-living estimates used throughout.</span>
               </label>
               <label>
-                Compare against another state (optional)
+                <span class="label-row">Compare against another state <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <select id="compare-state" class="plan-input"></select>
+                <span class="input-tip" hidden>Optional — pick a second state to see it side-by-side in the comparison below.</span>
               </label>
             </div>
 
@@ -197,6 +210,9 @@
 
             <h3>Contributions vs. investment growth</h3>
             <div id="contribution-chart-container" class="chart-container"></div>
+
+            <button type="button" id="save-pdf-btn" class="secondary-btn no-print">🖨️ Save plan as PDF</button>
+            <p class="disclaimer no-print">Opens your browser's print dialog — choose "Save as PDF" as the destination.</p>
           </div>
         </div>
       </section>
@@ -264,40 +280,45 @@
             <h3>Account mix &amp; assumptions</h3>
             <div class="form-grid">
               <label class="slider-label">
-                Traditional 401(k)/IRA
+                <span class="label-row">Traditional 401(k)/IRA <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <div class="slider-row">
                   <input type="range" id="split-traditional" class="plan-input" data-format="percent" min="0" max="100" step="5" value="70">
                   <output for="split-traditional" id="split-traditional-output">70%</output>
                 </div>
+                <span class="input-tip" hidden>Share of your portfolio in pre-tax accounts. Only affects the Tax Deep-Dive section, not your simple FIRE number above.</span>
               </label>
               <label class="slider-label">
-                Roth 401(k)/IRA
+                <span class="label-row">Roth 401(k)/IRA <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <div class="slider-row">
                   <input type="range" id="split-roth" class="plan-input" data-format="percent" min="0" max="100" step="5" value="15">
                   <output for="split-roth" id="split-roth-output">15%</output>
                 </div>
+                <span class="input-tip" hidden>Share of your portfolio in Roth accounts, withdrawn tax-free in retirement.</span>
               </label>
               <label class="slider-label">
-                Taxable brokerage
+                <span class="label-row">Taxable brokerage <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <div class="slider-row">
                   <input type="range" id="split-taxable" class="plan-input" data-format="percent" min="0" max="100" step="5" value="15">
                   <output for="split-taxable" id="split-taxable-output">15%</output>
                 </div>
+                <span class="input-tip" hidden>Share of your portfolio in an ordinary taxable brokerage account.</span>
               </label>
               <label class="slider-label">
-                Taxable account: gains share of balance
+                <span class="label-row">Taxable account: gains share <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <div class="slider-row">
                   <input type="range" id="taxable-gains-fraction" class="plan-input" data-format="percent" min="0" max="100" step="5" value="50">
                   <output for="taxable-gains-fraction" id="taxable-gains-fraction-output">50%</output>
                 </div>
+                <span class="input-tip" hidden>Of your taxable brokerage balance, the share that's investment gains rather than your original cost basis — only the gains portion is taxed when you sell.</span>
               </label>
               <label>
-                Withdrawal order strategy
+                <span class="label-row">Withdrawal order strategy <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
                 <select id="withdrawal-strategy" class="plan-input">
                   <option value="taxable-first">Taxable → Traditional → Roth (conventional)</option>
                   <option value="traditional-first">Traditional → Taxable → Roth</option>
                   <option value="proportional">Proportional (blend all three)</option>
                 </select>
+                <span class="input-tip" hidden>The order you draw down accounts in retirement. Compare all three below to see which lasts longest or costs the least in lifetime tax.</span>
               </label>
             </div>
             <p class="disclaimer">Percentages are normalized automatically if they don't add to 100. Traditional withdrawals are taxed as ordinary income computed in isolation (a simplification — real brackets would stack against other income); taxable withdrawals assume a flat long-term capital-gains rate on the gains share only; Roth withdrawals are tax-free.</p>
@@ -368,16 +389,18 @@
           <p class="panel-intro">Add your children's current ages to see college-year milestones on your timeline, and optionally fold estimated college costs into your projection.</p>
           <div class="form-grid">
             <label>
-              Children's current ages (comma-separated)
+              <span class="label-row">Children's current ages <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
               <input type="text" id="children-ages" class="plan-input" placeholder="e.g. 4, 9, 14">
+              <span class="input-tip" hidden>Optional, comma-separated. Used to estimate when each child starts college and, if enabled below, add that cost to your projection.</span>
             </label>
             <label class="checkbox-label">
               <input type="checkbox" id="include-college-costs" class="plan-input">
               Include estimated college costs in projection
             </label>
             <label>
-              Estimated cost per child, per year
-              <input type="number" id="college-cost-per-year" class="plan-input" min="0" step="1000" value="25000">
+              <span class="label-row">Estimated cost per child, per year <button type="button" class="info-icon" aria-label="What is this?">i</button></span>
+              <input type="text" inputmode="numeric" id="college-cost-per-year" class="plan-input currency-input" value="$25,000">
+              <span class="input-tip" hidden>A rough per-child, per-year estimate — adjust for your state and whether you're planning for public or private school.</span>
             </label>
           </div>
           <p id="family-suggestion" class="panel-intro"></p>
@@ -405,7 +428,7 @@
   <div id="view-statistics" class="view" hidden>
     <header class="page-header">
       <h1>US Retirement Statistics</h1>
-      <p class="subtitle">How typical American households compare, by age — useful context before you dig into your own numbers.</p>
+      <p class="subtitle">How typical American households compare, by age and by wealth — useful context before you dig into your own numbers.</p>
     </header>
     <main>
       <section class="panel">
@@ -428,9 +451,33 @@
         </div>
         <p class="disclaimer">Source: Federal Reserve Survey of Consumer Finances, 2022 wave. Figures are nominal 2022 dollars and will look dated in later years — treat them as a rough benchmark, not a target.</p>
       </section>
+
+      <section class="panel">
+        <h2>Where does a given net worth rank nationally?</h2>
+        <p class="panel-intro">Based on analysis of the same Federal Reserve survey data. Estimates at the extreme end (top 0.1–0.5%) carry much wider error bars — very few households at that level are surveyed, so treat these as rough orders of magnitude, not precise cutoffs.</p>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead><tr><th>Percentile</th><th>Net worth threshold</th></tr></thead>
+            <tbody id="percentile-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>What different portfolio sizes mean, financially</h2>
+        <p class="panel-intro">Each portfolio size below is converted to annual income using the same 4% safe withdrawal rate as the calculator, then compared against 2024 US Census household income percentiles for context.</p>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead><tr><th>Portfolio</th><th>Annual income at 4%</th><th>Compared to US household income</th></tr></thead>
+            <tbody id="portfolio-tier-body"></tbody>
+          </table>
+        </div>
+        <p class="disclaimer">Source: US Census Bureau Current Population Survey, 2024 household income figures. Your own required withdrawal rate may differ from 4% depending on your time horizon and risk tolerance — see the FIRE Plan section in the calculator.</p>
+      </section>
+
       <section class="panel">
         <h2>See how you compare</h2>
-        <p class="panel-intro">These are population medians, not goals — your own plan depends on your spending, your state, and when you want to retire.</p>
+        <p class="panel-intro">These are population medians and percentiles, not goals — your own plan depends on your spending, your state, and when you want to retire.</p>
         <button class="primary-btn" data-view="calculator">Go to the calculator →</button>
       </section>
     </main>

@@ -110,6 +110,56 @@ const RETIREMENT_STATS_BY_AGE = [
   { label: "75+", netWorth: 335000, retirementBalance: 130000 },
 ];
 
+/**
+ * Household net worth needed to reach each percentile nationally, from
+ * analysis of the Federal Reserve's 2022 Survey of Consumer Finances
+ * (DQYDJ's percentile breakdown of the same SCF data). Estimates at the
+ * extreme end (top 0.1–0.5%) carry much wider error bars — the SCF
+ * intentionally oversamples wealthy households but very small samples at
+ * the top mean these figures should be read as rough orders of magnitude.
+ */
+const NET_WORTH_PERCENTILES = [
+  { label: "Top 0.1%", netWorth: 61800000 },
+  { label: "Top 0.5%", netWorth: 20100000 },
+  { label: "Top 1%", netWorth: 13700000 },
+  { label: "Top 2%", netWorth: 5500000 },
+  { label: "Top 5%", netWorth: 3800000 },
+  { label: "Top 10%", netWorth: 1920000 },
+  { label: "Median (top 50%)", netWorth: 192000 },
+];
+
+/**
+ * 2024 US Census household income percentile thresholds, used only as a
+ * reference point for comparing a retirement portfolio's safe-withdrawal
+ * income against how working households' incomes are distributed.
+ */
+const HOUSEHOLD_INCOME_PERCENTILES = [
+  { label: "Median household income", income: 80020 },
+  { label: "Top 10% threshold", income: 234769 },
+  { label: "Top 5% threshold", income: 315504 },
+  { label: "Top 1% threshold", income: 631500 },
+];
+
+function incomePercentileContext(annualIncome) {
+  const p = HOUSEHOLD_INCOME_PERCENTILES;
+  if (annualIncome >= p[3].income) return "above the top 1% household income threshold";
+  if (annualIncome >= p[2].income) return "between the top 5% and top 1% household income thresholds";
+  if (annualIncome >= p[1].income) return "between the top 10% and top 5% household income thresholds";
+  if (annualIncome >= p[0].income) return "above median household income, below the top 10% threshold";
+  return "below median household income";
+}
+
+/**
+ * Portfolio size translated into annual income at a 4% safe withdrawal
+ * rate, compared against 2024 household income percentiles. Financial
+ * framing only — lifestyle/activity content is out of scope here (see
+ * the planned Retirement Life section).
+ */
+const PORTFOLIO_TIERS = [1000000, 3000000, 5000000, 10000000].map((portfolio) => {
+  const annualIncome = portfolio * 0.04;
+  return { portfolio, annualIncome, context: incomePercentileContext(annualIncome) };
+});
+
 const TAX_STRATEGIES = [
   {
     title: "401(k) / 403(b)",

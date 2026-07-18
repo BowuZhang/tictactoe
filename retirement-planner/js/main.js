@@ -25,16 +25,21 @@ function percent(value) {
   return (value * 100).toFixed(1) + "%";
 }
 
+/** Parses a possibly "$1,234"-formatted text input back into a number. */
+function parseCurrency(value) {
+  return Number(String(value).replace(/[^0-9.]/g, "")) || 0;
+}
+
 function readInputs() {
   return {
     currentAge: Number(document.getElementById("current-age").value),
     retirementAge: Number(document.getElementById("retirement-age").value),
-    currentPortfolio: Number(document.getElementById("current-portfolio").value),
-    annualContribution: Number(document.getElementById("annual-contribution").value),
+    currentPortfolio: parseCurrency(document.getElementById("current-portfolio").value),
+    annualContribution: parseCurrency(document.getElementById("annual-contribution").value),
     preRetirementReturnPct: Number(document.getElementById("pre-return").value),
     postRetirementReturnPct: Number(document.getElementById("post-return").value),
     inflationPct: Number(document.getElementById("inflation").value),
-    annualExpensesToday: Number(document.getElementById("annual-expenses").value),
+    annualExpensesToday: parseCurrency(document.getElementById("annual-expenses").value),
     swrPct: Number(document.getElementById("swr").value),
     filingStatus: document.getElementById("filing-status").value,
     stateCode: stateSelect.value,
@@ -46,8 +51,28 @@ function readFamilyInputs(currentAge) {
     currentAge,
     childrenAges: parseChildrenAges(document.getElementById("children-ages").value),
     includeCollegeCosts: document.getElementById("include-college-costs").checked,
-    collegeCostPerYear: Number(document.getElementById("college-cost-per-year").value),
+    collegeCostPerYear: parseCurrency(document.getElementById("college-cost-per-year").value),
   };
+}
+
+/** Wires a text input to live-format as "$1,234,567" while preserving cursor position. */
+function formatCurrencyField(input) {
+  const reformat = () => {
+    const start = input.selectionStart ?? input.value.length;
+    const digitsAfterCursor = input.value.slice(start).replace(/[^0-9]/g, "").length;
+    const raw = input.value.replace(/[^0-9]/g, "");
+    const formatted = raw === "" ? "" : "$" + Number(raw).toLocaleString("en-US");
+    input.value = formatted;
+    let pos = formatted.length;
+    let seen = 0;
+    while (pos > 0 && seen < digitsAfterCursor) {
+      pos--;
+      if (/[0-9]/.test(formatted[pos])) seen++;
+    }
+    input.setSelectionRange(pos, pos);
+  };
+  input.addEventListener("input", reformat);
+  reformat();
 }
 
 function readAccountSplit() {
@@ -241,6 +266,14 @@ function renderStaticContent() {
     (row) => `<tr><td>${row.label}</td><td>${currency(row.netWorth)}</td><td>${currency(row.retirementBalance)}</td></tr>`
   ).join("");
 
+  document.getElementById("percentile-table-body").innerHTML = NET_WORTH_PERCENTILES.map(
+    (row) => `<tr><td>${row.label}</td><td>${currency(row.netWorth)}</td></tr>`
+  ).join("");
+
+  document.getElementById("portfolio-tier-body").innerHTML = PORTFOLIO_TIERS.map(
+    (row) => `<tr><td>${currency(row.portfolio)}</td><td>${currency(row.annualIncome)}/yr</td><td>${row.context}</td></tr>`
+  ).join("");
+
   // Initial FIRE tab render with no computed recommendation yet.
   renderFireTypeTabs(null);
 }
@@ -376,10 +409,46 @@ function showView(name) {
 }
 
 document.querySelectorAll("[data-view]").forEach((el) => {
-  el.addEventListener("click", () => showView(el.getAttribute("data-view")));
+  el.addEventListener("click", () => {
+    showView(el.getAttribute("data-view"));
+    closeHamburgerMenu();
+  });
 });
 
 window.addEventListener("hashchange", () => showView(location.hash.slice(1) || "home"));
+
+// --- Hamburger menu (mobile nav) ---
+
+const hamburgerBtn = document.getElementById("hamburger-btn");
+const topnavLinks = document.getElementById("topnav-links");
+
+function closeHamburgerMenu() {
+  topnavLinks.classList.remove("open");
+  hamburgerBtn.setAttribute("aria-expanded", "false");
+}
+
+hamburgerBtn.addEventListener("click", () => {
+  const isOpen = topnavLinks.classList.toggle("open");
+  hamburgerBtn.setAttribute("aria-expanded", String(isOpen));
+});
+
+// --- Info tips ---
+
+document.addEventListener("click", (e) => {
+  if (!e.target.classList.contains("info-icon")) return;
+  const tip = e.target.closest("label").querySelector(".input-tip");
+  if (tip) tip.hidden = !tip.hidden;
+});
+
+// --- Currency-formatted inputs ---
+
+document.querySelectorAll(".currency-input").forEach(formatCurrencyField);
+
+// --- Save as PDF (browser print dialog) ---
+
+document.getElementById("save-pdf-btn").addEventListener("click", () => {
+  window.print();
+});
 
 populateStateDropdowns();
 renderStaticContent();

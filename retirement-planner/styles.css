@@ -42,6 +42,19 @@ body {
   color: var(--accent-dark);
 }
 
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-dark);
+}
+
 .topnav-links {
   display: flex;
   gap: 0.4rem;
@@ -757,5 +770,114 @@ input:focus, select:focus {
     flex-direction: column;
     gap: 0.15rem;
     font-size: 0.92rem;
+  }
+}
+
+@media (max-width: 680px) {
+  .hamburger-btn { display: block; }
+
+  .topnav-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem 1rem;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  .topnav-links.open {
+    display: flex;
+  }
+
+  .topnav-link {
+    text-align: left;
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+  }
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.info-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #f2f6f4;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.info-icon:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.input-tip {
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: #f2f6f4;
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  line-height: 1.4;
+}
+
+@media print {
+  .topnav, .page-footer, .no-print, .panel-toggle .chevron,
+  .detect-row, #see-fire-plan-link, .primary-btn, .info-icon {
+    display: none !important;
+  }
+
+  .panel-body[hidden] {
+    display: block !important;
+  }
+
+  .gated-empty {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .panel {
+    border: 1px solid #ccc;
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  input[type="range"] {
+    display: none;
+  }
+
+  input, select {
+    border: none;
+    background: none;
+    padding: 0.1rem 0;
+  }
+
+  .table-scroll-tall {
+    max-height: none;
+    overflow: visible;
   }
 }
