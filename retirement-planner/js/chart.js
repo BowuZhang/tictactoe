@@ -79,3 +79,144 @@ function renderProjectionChart(containerEl, points, fireNumber, retirementAge) {
     </svg>
   `;
 }
+
+/** Stacked area: cumulative contributions vs. cumulative investment growth, accumulation phase only. */
+function renderContributionGrowthChart(containerEl, points, currentAge, currentPortfolio, annualContribution) {
+  const accumulationPoints = points.filter((p) => p.phase === "accumulation");
+  const width = Math.max(280, Math.min(720, containerEl.clientWidth || 720));
+  const isNarrow = width < 420;
+  const height = isNarrow ? 240 : 300;
+  const margin = { top: 20, right: isNarrow ? 8 : 20, bottom: isNarrow ? 32 : 36, left: isNarrow ? 46 : 64 };
+  const tickFontSize = isNarrow ? 11 : 12;
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+
+  const minAge = accumulationPoints[0]?.age ?? currentAge;
+  const maxAge = accumulationPoints[accumulationPoints.length - 1]?.age ?? currentAge;
+  const maxBalance = Math.max(...accumulationPoints.map((p) => p.balance), 1) * 1.08;
+
+  const xScale = (age) => margin.left + ((age - minAge) / Math.max(1, maxAge - minAge)) * innerW;
+  const yScale = (bal) => margin.top + innerH - (bal / maxBalance) * innerH;
+
+  const contributionsAt = (age) => currentPortfolio + annualContribution * (age - currentAge);
+
+  const baseline = accumulationPoints.map((p) => `${xScale(p.age).toFixed(1)},${yScale(0).toFixed(1)}`);
+  const contribTop = accumulationPoints.map((p) => `${xScale(p.age).toFixed(1)},${yScale(Math.min(contributionsAt(p.age), p.balance)).toFixed(1)}`);
+  const totalTop = accumulationPoints.map((p) => `${xScale(p.age).toFixed(1)},${yScale(p.balance).toFixed(1)}`);
+
+  const contribArea = `M ${baseline[0]} L ${contribTop.join(" L ")} L ${baseline[baseline.length - 1]} Z`;
+  const growthArea = `M ${contribTop[0]} L ${totalTop.join(" L ")} L ${contribTop[contribTop.length - 1]} Z`;
+
+  const tickCount = isNarrow ? 4 : 5;
+  let yTicks = "";
+  for (let i = 0; i <= tickCount; i++) {
+    const val = (maxBalance / tickCount) * i;
+    const y = yScale(val).toFixed(1);
+    yTicks += `
+      <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" class="chart-grid" />
+      <text x="${margin.left - 8}" y="${Number(y) + 4}" class="chart-axis-label" font-size="${tickFontSize}" text-anchor="end">${formatCurrencyShort(val)}</text>
+    `;
+  }
+  const targetTicks = isNarrow ? 4 : 8;
+  const ageStep = Math.max(1, Math.round((maxAge - minAge) / targetTicks));
+  let xTicks = "";
+  for (let age = minAge; age <= maxAge; age += ageStep) {
+    const x = xScale(age).toFixed(1);
+    xTicks += `<text x="${x}" y="${height - margin.bottom + 18}" class="chart-axis-label" font-size="${tickFontSize}" text-anchor="middle">${age}</text>`;
+  }
+
+  containerEl.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" class="projection-svg" role="img" aria-label="Contributions versus investment growth over time">
+      ${yTicks}
+      <path d="${contribArea}" class="area-contrib" />
+      <path d="${growthArea}" class="area-growth" />
+      ${xTicks}
+      <text x="${width / 2}" y="${height - 4}" class="chart-axis-title" font-size="${tickFontSize}" text-anchor="middle">Age</text>
+    </svg>
+    <div class="chart-legend">
+      <span><i class="legend-swatch legend-contrib"></i>Your contributions</span>
+      <span><i class="legend-swatch legend-growth"></i>Investment growth</span>
+    </div>
+  `;
+}
+
+/** Simple horizontal stacked bar: net take-home vs. federal tax vs. state tax. */
+function renderTaxBreakdownBar(containerEl, breakdown) {
+  const { net, federal, state } = breakdown;
+  const total = Math.max(1, net + federal + state);
+  const netPct = (net / total) * 100;
+  const federalPct = (federal / total) * 100;
+  const statePct = (state / total) * 100;
+
+  containerEl.innerHTML = `
+    <div class="tax-bar" role="img" aria-label="Breakdown of gross withdrawal into net income, federal tax, and state tax">
+      <div class="tax-bar-segment tax-bar-net" style="width:${netPct}%">${netPct >= 12 ? "Net " + formatCurrencyShort(net) : ""}</div>
+      <div class="tax-bar-segment tax-bar-federal" style="width:${federalPct}%">${federalPct >= 10 ? formatCurrencyShort(federal) : ""}</div>
+      <div class="tax-bar-segment tax-bar-state" style="width:${statePct}%">${statePct >= 10 ? formatCurrencyShort(state) : ""}</div>
+    </div>
+    <div class="chart-legend">
+      <span><i class="legend-swatch legend-net"></i>Net take-home (${netPct.toFixed(0)}%)</span>
+      <span><i class="legend-swatch legend-federal"></i>Federal tax (${federalPct.toFixed(0)}%)</span>
+      <span><i class="legend-swatch legend-state"></i>State tax (${statePct.toFixed(0)}%)</span>
+    </div>
+  `;
+}
+
+/** Multi-line comparison of total portfolio balance under different withdrawal-order strategies. */
+function renderStrategyComparisonChart(containerEl, strategyResults, retirementAge) {
+  const width = Math.max(280, Math.min(720, containerEl.clientWidth || 720));
+  const isNarrow = width < 420;
+  const height = isNarrow ? 260 : 320;
+  const margin = { top: 20, right: isNarrow ? 8 : 20, bottom: isNarrow ? 32 : 36, left: isNarrow ? 46 : 64 };
+  const tickFontSize = isNarrow ? 11 : 12;
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+
+  const allAges = strategyResults[0].rows.map((r) => r.age);
+  const minAge = retirementAge;
+  const maxAge = Math.max(...allAges);
+  const maxBalance = Math.max(1, ...strategyResults.flatMap((s) => s.rows.map((r) => r.totalBalance))) * 1.08;
+
+  const xScale = (age) => margin.left + ((age - minAge) / Math.max(1, maxAge - minAge)) * innerW;
+  const yScale = (bal) => margin.top + innerH - (bal / maxBalance) * innerH;
+
+  const colors = ["#1f7a5c", "#8a5cb0", "#c07a1e"];
+  const paths = strategyResults
+    .map((s, i) => {
+      const d = [`M ${xScale(retirementAge).toFixed(1)} ${yScale(s.rows[0] ? s.rows[0].totalBalance : 0).toFixed(1)}`]
+        .concat(s.rows.map((r) => `L ${xScale(r.age).toFixed(1)} ${yScale(r.totalBalance).toFixed(1)}`))
+        .join(" ");
+      return `<path d="${d}" fill="none" stroke="${colors[i % colors.length]}" stroke-width="2.5" />`;
+    })
+    .join("");
+
+  const tickCount = isNarrow ? 4 : 5;
+  let yTicks = "";
+  for (let i = 0; i <= tickCount; i++) {
+    const val = (maxBalance / tickCount) * i;
+    const y = yScale(val).toFixed(1);
+    yTicks += `
+      <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" class="chart-grid" />
+      <text x="${margin.left - 8}" y="${Number(y) + 4}" class="chart-axis-label" font-size="${tickFontSize}" text-anchor="end">${formatCurrencyShort(val)}</text>
+    `;
+  }
+  const targetTicks = isNarrow ? 4 : 8;
+  const ageStep = Math.max(1, Math.round((maxAge - minAge) / targetTicks));
+  let xTicks = "";
+  for (let age = minAge; age <= maxAge; age += ageStep) {
+    const x = xScale(age).toFixed(1);
+    xTicks += `<text x="${x}" y="${height - margin.bottom + 18}" class="chart-axis-label" font-size="${tickFontSize}" text-anchor="middle">${age}</text>`;
+  }
+
+  containerEl.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" class="projection-svg" role="img" aria-label="Portfolio balance in retirement under different withdrawal-order strategies">
+      ${yTicks}
+      ${paths}
+      ${xTicks}
+      <text x="${width / 2}" y="${height - 4}" class="chart-axis-title" font-size="${tickFontSize}" text-anchor="middle">Age</text>
+    </svg>
+    <div class="chart-legend">
+      ${strategyResults.map((s, i) => `<span><i class="legend-swatch" style="background:${colors[i % colors.length]}"></i>${s.label}</span>`).join("")}
+    </div>
+  `;
+}

@@ -21,9 +21,13 @@ function realReturn(nominalRatePct, inflationRatePct) {
  *   currentAge, retirementAge, currentPortfolio, annualContribution,
  *   preRetirementReturnPct, postRetirementReturnPct, inflationPct,
  *   annualExpensesToday, swrPct, filingStatus, stateCode
+ * @param {Object<number, number>} [extraExpensesByAge] optional one-off
+ *   expenses (e.g. a child's college years) keyed by the age they hit,
+ *   subtracted from the balance in that year in addition to normal
+ *   contributions/withdrawals.
  * @returns {object} projection results
  */
-function runProjection(input) {
+function runProjection(input, extraExpensesByAge) {
   const {
     currentAge,
     retirementAge,
@@ -37,6 +41,7 @@ function runProjection(input) {
     filingStatus,
     stateCode,
   } = input;
+  const extras = extraExpensesByAge || {};
 
   const stateInfo = STATE_DATA[stateCode];
   const preReturn = realReturn(preRetirementReturnPct, inflationPct);
@@ -48,32 +53,32 @@ function runProjection(input) {
   const grossAnnualWithdrawal = grossUpForTaxes(annualExpensesToday, filingStatus, stateInfo);
   const fireNumber = grossAnnualWithdrawal / swr;
 
+  // Coast FIRE: portfolio value at any given age that would grow to the
+  // FIRE number by retirement age with zero further contributions.
+  const coastFireNumberAt = (age) => fireNumber / Math.pow(1 + preReturn, Math.max(0, retirementAge - age));
+  const coastFireNumber = coastFireNumberAt(currentAge);
+  const alreadyCoastFire = currentPortfolio >= coastFireNumber;
+
   const points = [];
   let balance = currentPortfolio;
   let fireAge = null;
+  let coastFireAge = alreadyCoastFire ? currentAge : null;
 
   // Accumulation phase
   for (let age = currentAge; age <= retirementAge; age++) {
     points.push({ age, balance, phase: "accumulation" });
-    if (fireAge === null && balance >= fireNumber) {
-      fireAge = age;
-    }
+    if (fireAge === null && balance >= fireNumber) fireAge = age;
+    if (coastFireAge === null && balance >= coastFireNumberAt(age)) coastFireAge = age;
     if (age < retirementAge) {
-      balance = balance * (1 + preReturn) + annualContribution;
+      balance = balance * (1 + preReturn) + annualContribution - (extras[age] || 0);
     }
   }
-
-  // Coast FIRE: portfolio value today that would grow to the FIRE number
-  // by retirement age with zero further contributions.
-  const yearsToRetirement = Math.max(0, retirementAge - currentAge);
-  const coastFireNumber = fireNumber / Math.pow(1 + preReturn, yearsToRetirement);
-  const alreadyCoastFire = currentPortfolio >= coastFireNumber;
 
   // Drawdown phase
   let depletedAge = null;
   let drawdownBalance = balance;
   for (let age = retirementAge + 1; age <= MAX_PLANNING_AGE; age++) {
-    drawdownBalance = drawdownBalance * (1 + postReturn) - grossAnnualWithdrawal;
+    drawdownBalance = drawdownBalance * (1 + postReturn) - grossAnnualWithdrawal - (extras[age] || 0);
     points.push({ age, balance: Math.max(0, drawdownBalance), phase: "drawdown" });
     if (drawdownBalance <= 0 && depletedAge === null) {
       depletedAge = age;
@@ -89,6 +94,7 @@ function runProjection(input) {
     grossAnnualWithdrawal,
     fireAge,
     coastFireNumber,
+    coastFireAge,
     alreadyCoastFire,
     depletedAge,
     sustainable,

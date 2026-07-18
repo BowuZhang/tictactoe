@@ -56,6 +56,13 @@ function combinedEffectiveRate(grossIncome, filingStatus, stateInfo) {
   return (fed + state) / grossIncome;
 }
 
+/** Splits a gross income amount into federal tax, state tax, and net take-home. */
+function taxBreakdown(grossIncome, filingStatus, stateInfo) {
+  const federal = federalTax(grossIncome, filingStatus);
+  const state = stateTax(grossIncome, stateInfo);
+  return { federal, state, net: grossIncome - federal - state };
+}
+
 /**
  * Solve for the gross withdrawal needed so that, after federal + state tax,
  * the retiree nets `desiredAfterTaxIncome`. Uses fixed-point iteration since

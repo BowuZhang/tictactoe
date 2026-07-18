@@ -1,9 +1,10 @@
 const form = document.getElementById("planner-form");
 const stateSelect = document.getElementById("state");
 const compareStateSelect = document.getElementById("compare-state");
-const resultsSection = document.getElementById("results");
 const fireTypeBadge = document.getElementById("fire-type-badge");
 const fireTypeDescription = document.getElementById("fire-type-description");
+
+let selectedFireTypeKey = null; // null = follow the computed recommendation
 
 function populateStateDropdowns() {
   const options = Object.entries(STATE_DATA)
@@ -11,7 +12,7 @@ function populateStateDropdowns() {
     .map(([code, info]) => `<option value="${code}">${info.name}</option>`)
     .join("");
   stateSelect.innerHTML = options;
-  compareStateSelect.innerHTML = `<option value="">— None —</option>` + options;
+  compareStateSelect.innerHTML = `<option value="">No comparison</option>` + options;
   stateSelect.value = "CA";
 }
 
@@ -39,6 +40,27 @@ function readInputs() {
   };
 }
 
+function readFamilyInputs(currentAge) {
+  return {
+    currentAge,
+    childrenAges: parseChildrenAges(document.getElementById("children-ages").value),
+    includeCollegeCosts: document.getElementById("include-college-costs").checked,
+    collegeCostPerYear: Number(document.getElementById("college-cost-per-year").value),
+  };
+}
+
+function readAccountSplit() {
+  return {
+    traditionalPct: Number(document.getElementById("split-traditional").value) / 100,
+    rothPct: Number(document.getElementById("split-roth").value) / 100,
+    taxablePct: Number(document.getElementById("split-taxable").value) / 100,
+  };
+}
+
+function readTaxableGainsFraction() {
+  return Number(document.getElementById("taxable-gains-fraction").value) / 100;
+}
+
 function buildStateCard(stateCode, input, result) {
   const info = STATE_DATA[stateCode];
   const rate = combinedEffectiveRate(result.grossAnnualWithdrawal, input.filingStatus, info);
@@ -58,17 +80,77 @@ function buildStateCard(stateCode, input, result) {
   `;
 }
 
+function renderFireTypeTabs(computedKey) {
+  const activeKey = selectedFireTypeKey || computedKey;
+  const tabsEl = document.getElementById("fire-type-tabs");
+  tabsEl.innerHTML = FIRE_TYPES.map(
+    (t) => `
+      <button type="button" class="fire-tab ${t.key === activeKey ? "active" : ""}" data-fire-key="${t.key}">
+        ${t.label}${t.key === computedKey ? '<span class="fire-tab-recommended">Recommended</span>' : ""}
+      </button>
+    `
+  ).join("");
+  const active = FIRE_TYPES.find((t) => t.key === activeKey) || FIRE_TYPES[FIRE_TYPES.length - 1];
+  document.getElementById("fire-type-panel-description").textContent = active.description;
+
+  tabsEl.querySelectorAll(".fire-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedFireTypeKey = btn.getAttribute("data-fire-key");
+      renderFireTypeTabs(computedKey);
+    });
+  });
+}
+
+function renderYearByYearTable(result) {
+  const rows = result.rows
+    .map(
+      (r) => `
+      <tr>
+        <td>${r.age}</td>
+        <td>${currency(r.withdrawals.traditional)}</td>
+        <td>${currency(r.withdrawals.roth)}</td>
+        <td>${currency(r.withdrawals.taxable)}</td>
+        <td>${currency(r.federalTax)}</td>
+        <td>${currency(r.stateTax)}</td>
+        <td>${currency(r.netAchieved)}</td>
+        <td>${currency(r.totalBalance)}</td>
+      </tr>
+    `
+    )
+    .join("");
+  document.getElementById("year-by-year-body").innerHTML = rows;
+}
+
+function renderStrategyComparisonTable(allResults) {
+  document.getElementById("strategy-comparison-body").innerHTML = allResults
+    .map(
+      (s) => `
+      <tr>
+        <td>${s.label}</td>
+        <td>${currency(s.lifetimeTotalTax)}</td>
+        <td>${s.sustainable ? "Lasts to 100" : "Runs out at age " + s.depletedAge}</td>
+        <td>${currency(s.finalBalance)}</td>
+      </tr>
+    `
+    )
+    .join("");
+}
+
 function render(input) {
-  resultsSection.hidden = false;
+  const familyInput = readFamilyInputs(input.currentAge);
+  const familyPlan = buildFamilyPlan(familyInput);
 
-  const result = runProjection(input);
+  const result = runProjection(input, familyPlan.extraExpensesByAge);
   const fireType = classifyFireType(input, result);
+  const computedFireKey = FIRE_TYPE_KEY_BY_LABEL[fireType.label] || "traditional";
 
+  // --- Your Plan ---
   document.getElementById("fire-number").textContent = currency(result.fireNumber);
   const fireAgeEl = document.getElementById("fire-age");
   const fireAgeReached = result.fireAge !== null;
   fireAgeEl.textContent = fireAgeReached ? `Age ${result.fireAge}` : "Not reached by target age";
   fireAgeEl.classList.toggle("card-value-small", !fireAgeReached);
+
   document.getElementById("balance-at-retirement").textContent = currency(result.balanceAtRetirement);
   document.getElementById("gross-withdrawal").textContent = currency(result.grossAnnualWithdrawal) + " / yr";
   document.getElementById("coast-fire-number").textContent = currency(result.coastFireNumber);
@@ -86,40 +168,113 @@ function render(input) {
   fireTypeDescription.textContent = fireType.description;
 
   renderProjectionChart(document.getElementById("chart-container"), result.points, result.fireNumber, input.retirementAge);
+  renderContributionGrowthChart(
+    document.getElementById("contribution-chart-container"),
+    result.points,
+    input.currentAge,
+    input.currentPortfolio,
+    input.annualContribution
+  );
 
-  const stateCards = document.getElementById("state-comparison");
-  let html = buildStateCard(input.stateCode, input, result);
-  if (compareStateSelect.value) {
-    html += buildStateCard(compareStateSelect.value, input, result);
+  // --- Timeline ---
+  const milestones = buildTimelineMilestones(input, result, familyPlan.milestones);
+  renderTimeline(document.getElementById("timeline-container"), milestones, input.currentAge);
+
+  // --- State comparison ---
+  let stateHtml = buildStateCard(input.stateCode, input, result);
+  if (compareStateSelect.value) stateHtml += buildStateCard(compareStateSelect.value, input, result);
+  document.getElementById("state-comparison").innerHTML = stateHtml;
+
+  // --- Tax deep-dive ---
+  const stateInfo = STATE_DATA[input.stateCode];
+  const breakdown = taxBreakdown(result.grossAnnualWithdrawal, input.filingStatus, stateInfo);
+  renderTaxBreakdownBar(document.getElementById("tax-breakdown-container"), breakdown);
+
+  const split = readAccountSplit();
+  const gainsFraction = readTaxableGainsFraction();
+  const strategyInput = { ...input, taxableGainsFraction: gainsFraction };
+  const strategyKey = document.getElementById("withdrawal-strategy").value;
+  const selectedResult = simulateWithdrawalStrategy(strategyInput, split, strategyKey, familyPlan.extraExpensesByAge);
+  renderYearByYearTable(selectedResult);
+
+  const allStrategyResults = compareWithdrawalStrategies(strategyInput, split, familyPlan.extraExpensesByAge);
+  renderStrategyComparisonTable(allStrategyResults);
+  renderStrategyComparisonChart(document.getElementById("strategy-chart-container"), allStrategyResults, input.retirementAge);
+
+  // --- FIRE Plan ---
+  renderFireTypeTabs(computedFireKey);
+
+  // --- Family ---
+  document.getElementById("family-suggestion").textContent = buildFamilySuggestion(familyInput);
+  const familyMilestonesEl = document.getElementById("family-milestones");
+  if (familyPlan.milestones.length === 0) {
+    familyMilestonesEl.innerHTML = "";
+  } else {
+    familyMilestonesEl.innerHTML = familyPlan.milestones
+      .map((m) => `<li>${m.label} — you'll be about age ${m.age}</li>`)
+      .join("");
   }
-  stateCards.innerHTML = html;
+
+  // --- Life after retirement ---
+  document.getElementById("life-after-intro").textContent = buildLifeAfterIntro(input, familyInput.childrenAges);
+}
+
+function renderStaticContent() {
+  document.getElementById("life-after-categories").innerHTML = LIFE_AFTER_CATEGORIES.map(
+    (cat) => `
+      <div class="life-category">
+        <h4>${cat.title}</h4>
+        <ul>${cat.items.map((item) => `<li>${item}</li>`).join("")}</ul>
+      </div>
+    `
+  ).join("");
 }
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
+  selectedFireTypeKey = null;
   render(readInputs());
 });
 
-compareStateSelect.addEventListener("change", () => {
-  if (!resultsSection.hidden) render(readInputs());
+compareStateSelect.addEventListener("change", () => render(readInputs()));
+
+["split-traditional", "split-roth", "split-taxable", "taxable-gains-fraction", "withdrawal-strategy"].forEach((id) => {
+  document.getElementById(id).addEventListener("change", () => render(readInputs()));
+});
+
+["children-ages", "include-college-costs", "college-cost-per-year"].forEach((id) => {
+  document.getElementById(id).addEventListener("change", () => render(readInputs()));
+});
+
+document.getElementById("see-fire-plan-link").addEventListener("click", () => {
+  openPanel("panel-fire-plan");
+  document.getElementById("panel-fire-plan").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+function openPanel(panelId) {
+  const toggle = document.querySelector(`.panel-toggle[aria-controls="${panelId}-body"]`);
+  const body = document.getElementById(`${panelId}-body`);
+  if (toggle && body && toggle.getAttribute("aria-expanded") !== "true") {
+    toggle.setAttribute("aria-expanded", "true");
+    body.hidden = false;
+  }
+}
+
+document.querySelectorAll(".panel-toggle").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const body = document.getElementById(btn.getAttribute("aria-controls"));
+    const expanded = btn.getAttribute("aria-expanded") === "true";
+    btn.setAttribute("aria-expanded", String(!expanded));
+    body.hidden = expanded;
+  });
 });
 
 let resizeTimer = null;
 window.addEventListener("resize", () => {
-  if (resultsSection.hidden) return;
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => render(readInputs()), 150);
 });
 
-// FIRE guide accordion
-document.querySelectorAll(".accordion-toggle").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const panel = document.getElementById(btn.getAttribute("aria-controls"));
-    const expanded = btn.getAttribute("aria-expanded") === "true";
-    btn.setAttribute("aria-expanded", String(!expanded));
-    panel.hidden = expanded;
-  });
-});
-
 populateStateDropdowns();
+renderStaticContent();
 render(readInputs());
